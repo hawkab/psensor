@@ -31,7 +31,8 @@ count_visible_changed_cbk(GSettings *settings, gchar *key, gpointer data)
 	count_visible = config_is_count_visible();
 
 	if (count_visible) {
-		unity_launcher_entry_set_count(psensor_entry, 0);
+		/* if the count is not set to non-0 value, it will not be visible */
+		unity_launcher_entry_set_count(psensor_entry, 1);
 		unity_launcher_entry_set_count_visible(psensor_entry, TRUE);
 	} else {
 		unity_launcher_entry_set_count_visible(psensor_entry, FALSE);
@@ -85,7 +86,8 @@ void ui_unity_init(void)
 	count_visible = config_is_count_visible();
 
 	if (count_visible) {
-		unity_launcher_entry_set_count(psensor_entry, 0);
+		/* if the count is not set to non-0 value, it will not be visible */
+		unity_launcher_entry_set_count(psensor_entry, 1);
 		unity_launcher_entry_set_count_visible(psensor_entry, TRUE);
 	} else {
 		unity_launcher_entry_set_count_visible(psensor_entry, FALSE);
