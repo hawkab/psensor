@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: jeanfi@gmail.com\n"
-"POT-Creation-Date: 2018-10-20 17:33+0200\n"
+"POT-Creation-Date: 2020-06-25 21:48+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -687,7 +687,7 @@ msgstr ""
 msgid "%s: Invalid content: %s"
 msgstr ""
 
-#: src/rsensor.c:192
+#: src/rsensor.c:190
 #, c-format
 msgid "%s: Invalid JSON: %s"
 msgstr ""
@@ -791,7 +791,7 @@ msgid "Psensor is a GTK+ application for monitoring hardware sensors"
 msgstr ""
 
 #: src/ui.c:216
-msgid "Copyright(c) 2010-2018 jeanfi@gmail.com"
+msgid "Copyright(c) 2010-2020 jeanfi@gmail.com"
 msgstr ""
 
 #: src/ui.c:222
