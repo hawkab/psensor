@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: psensor\n"
 "Report-Msgid-Bugs-To: jeanfi@gmail.com\n"
-"POT-Creation-Date: 2018-10-20 17:33+0200\n"
+"POT-Creation-Date: 2020-06-25 21:48+0200\n"
 "PO-Revision-Date: 2014-09-20 11:26+0000\n"
 "Last-Translator: Jean-Philippe Orsini <Unknown>\n"
 "Language-Team: Latvian <lv@li.org>\n"
@@ -704,7 +704,7 @@ msgstr "Neizdevās savienoties ar: %s"
 msgid "%s: Invalid content: %s"
 msgstr "Nederīgs saturs: %s"
 
-#: src/rsensor.c:192
+#: src/rsensor.c:190
 #, fuzzy, c-format
 msgid "%s: Invalid JSON: %s"
 msgstr "Nederīgs JSON: %s"
@@ -819,7 +819,7 @@ msgstr "Psensor ir GTK+ lietotne aparatūras sensoru pārraudzībai"
 
 #: src/ui.c:216
 #, fuzzy
-msgid "Copyright(c) 2010-2018 jeanfi@gmail.com"
+msgid "Copyright(c) 2010-2020 jeanfi@gmail.com"
 msgstr ""
 "Autortiesības(c) 2010-2014\n"
 "jeanfi@gmail.com"

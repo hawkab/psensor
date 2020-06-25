@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: psensor\n"
 "Report-Msgid-Bugs-To: jeanfi@gmail.com\n"
-"POT-Creation-Date: 2018-10-20 17:33+0200\n"
+"POT-Creation-Date: 2020-06-25 21:48+0200\n"
 "PO-Revision-Date: 2014-09-20 11:26+0000\n"
 "Last-Translator: Jean-Philippe Orsini <Unknown>\n"
 "Language-Team: Hungarian <gnome-hu-list-request@gnome.org>\n"
@@ -709,7 +709,7 @@ msgstr "Nem sikerül kapcsolódni a következőhöz: %s"
 msgid "%s: Invalid content: %s"
 msgstr "Érvénytelen tartalom: %s"
 
-#: src/rsensor.c:192
+#: src/rsensor.c:190
 #, fuzzy, c-format
 msgid "%s: Invalid JSON: %s"
 msgstr "Érvénytelen JSON: %s"
@@ -826,7 +826,7 @@ msgstr "A Psensor egy GTK+ alkalmazás a hardver érzékelőinek figyelésére"
 
 #: src/ui.c:216
 #, fuzzy
-msgid "Copyright(c) 2010-2018 jeanfi@gmail.com"
+msgid "Copyright(c) 2010-2020 jeanfi@gmail.com"
 msgstr "Copyright(c) 2010-2014 jeanfi@gmail.com"
 
 #: src/ui.c:222
