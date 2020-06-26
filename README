@@ -124,7 +124,7 @@ ATI/AMD GPU Support
 ~~~~~~~~~~~~~~~~~~~
 
 When the OpenSource ATI driver is used, the monitoring
-information is available throw lm-sensors and does not require the
+information is available through lm-sensors and does not require the
 following instructions.
 
 When the proprietary ATI driver(Catalyst) is used, the build is
