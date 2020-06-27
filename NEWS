@@ -4,6 +4,7 @@
 v1.2.1
 ------
 
+* Changed icons to better, higher resolution ones (Stuart Hayhurst)
 * documentation files are generated with asciidoctor instead of
   asciidoc.
 * added support of BCM2835 which is mostly used in the Raspberry PI3.

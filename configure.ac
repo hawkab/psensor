@@ -257,6 +257,8 @@ AC_CONFIG_FILES([
  icons/hicolor/32x32/Makefile
  icons/hicolor/48x48/Makefile
  icons/hicolor/64x64/Makefile
+ icons/hicolor/128x128/Makefile
+ icons/hicolor/256x256/Makefile
  icons/ubuntu-mono-dark/status/22/Makefile
  icons/ubuntu-mono-light/status/22/Makefile
  icons/ubuntu-mono-dark/apps/22/Makefile
