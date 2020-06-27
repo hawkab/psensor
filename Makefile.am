@@ -9,6 +9,8 @@ SUBDIRS = doc \
 	icons/hicolor/32x32 \
 	icons/hicolor/48x48 \
 	icons/hicolor/64x64 \
+	icons/hicolor/128x128 \
+	icons/hicolor/256x256 \
 	icons/ubuntu-mono-dark/status/22 \
 	icons/ubuntu-mono-light/status/22 \
 	icons/ubuntu-mono-dark/apps/22 \
