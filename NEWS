@@ -4,6 +4,8 @@
 v1.2.2
 ------
 
+* Fixed compilation error with microhttpd >= 0.9.71.
+
 v1.2.1
 ------
 
