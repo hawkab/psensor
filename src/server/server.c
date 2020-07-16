@@ -306,14 +306,20 @@ create_response(const char *nurl, const char *method, unsigned int *rp_code)
 					       MHD_RESPMEM_MUST_FREE);
 }
 
-static int cbk_http_request(void *cls,
-			    struct MHD_Connection *connection,
-			    const char *url,
-			    const char *method,
-			    const char *version,
-			    const char *upload_data,
-			    size_t *upload_data_size,
-			    void **ptr)
+
+#if MHD_VERSION < 0x00097002
+static int
+#else
+static MHD_result
+#endif
+cbk_http_request(void *cls,
+		 struct MHD_Connection *connection,
+		 const char *url,
+		 const char *method,
+		 const char *version,
+		 const char *upload_data,
+		 size_t *upload_data_size,
+		 void **ptr)
 {
 	static int dummy;
 	struct MHD_Response *response;
