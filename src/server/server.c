@@ -310,7 +310,7 @@ create_response(const char *nurl, const char *method, unsigned int *rp_code)
 #if MHD_VERSION < 0x00097002
 static int
 #else
-static MHD_result
+static MHD_Result
 #endif
 cbk_http_request(void *cls,
 		 struct MHD_Connection *connection,
