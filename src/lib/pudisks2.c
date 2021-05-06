@@ -83,7 +83,7 @@ static void smart_update(struct psensor *s, UDisksDriveAta *ata)
 			PROVIDER_NAME,
 			data->path);
 
-		data->last_smart_update = t;
+	data->last_smart_update = t;
 }
 
 void udisks2_psensor_list_update(struct psensor **sensors)
