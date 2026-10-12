@@ -66,6 +66,15 @@ struct config {
 	int slog_interval;
 };
 
+struct sensor_action {
+	bool enabled, below;
+	double threshold, hysteresis;
+	int seconds;
+	char *command;
+};
+void config_get_sensor_action(const char *, struct sensor_action *);
+void config_set_sensor_action(const char *, const struct sensor_action *);
+
 /* Loads psensor configuration */
 struct config *config_load(void);
 

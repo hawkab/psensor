@@ -3,28 +3,34 @@
 <interface>
   <requires lib="gtk+" version="3.4"/>
   <object class="GtkAction" id="AboutAction">
+    <property name="icon-name">help-about-symbolic</property>
     <property name="label" translatable="yes">About</property>
     <signal name="activate" handler="ui_cb_about" swapped="no"/>
   </object>
   <object class="GtkAction" id="AppIndicatorPreferencesAction">
+    <property name="icon-name">preferences-system-symbolic</property>
     <property name="label" translatable="yes">Preferences</property>
     <property name="short_label" translatable="yes">Preferences</property>
     <signal name="activate" handler="ui_appindicator_cb_preferences" swapped="no"/>
   </object>
   <object class="GtkAction" id="AppIndicatorSensorPreferencesAction">
+    <property name="icon-name">preferences-other-symbolic</property>
     <property name="label" translatable="yes">Sensor Preferences</property>
     <property name="short_label" translatable="yes">Sensor Preferences</property>
     <signal name="activate" handler="ui_appindicator_cb_sensor_preferences" swapped="no"/>
   </object>
   <object class="GtkAction" id="PreferencesAction">
+    <property name="icon-name">preferences-system-symbolic</property>
     <property name="label" translatable="yes">Preferences</property>
     <signal name="activate" handler="ui_cb_preferences" swapped="no"/>
   </object>
   <object class="GtkAction" id="QuitAction">
+    <property name="icon-name">application-exit-symbolic</property>
     <property name="label" translatable="yes">Quit</property>
     <signal name="activate" handler="ui_cb_menu_quit" swapped="no"/>
   </object>
   <object class="GtkAction" id="SensorPreferencesAction">
+    <property name="icon-name">preferences-other-symbolic</property>
     <property name="label" translatable="yes">Sensor Preferences</property>
     <signal name="activate" handler="ui_cb_sensor_preferences" swapped="no"/>
   </object>
@@ -37,7 +43,8 @@
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="use_underline">True</property>
-        <property name="use_stock">True</property>
+        <property name="use_stock">False</property>
+        <property name="always_show_image">True</property>
       </object>
     </child>
     <child>
@@ -46,7 +53,8 @@
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="use_underline">True</property>
-        <property name="use_stock">True</property>
+        <property name="use_stock">False</property>
+        <property name="always_show_image">True</property>
       </object>
     </child>
     <child>
@@ -61,7 +69,8 @@
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="use_underline">True</property>
-        <property name="use_stock">True</property>
+        <property name="use_stock">False</property>
+        <property name="always_show_image">True</property>
       </object>
     </child>
     <child>
@@ -76,11 +85,13 @@
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="use_underline">True</property>
-        <property name="use_stock">True</property>
+        <property name="use_stock">False</property>
+        <property name="always_show_image">True</property>
       </object>
     </child>
   </object>
   <object class="GtkAction" id="ShowAction">
+    <property name="icon-name">utilities-system-monitor-symbolic</property>
     <property name="label" translatable="yes">Show</property>
     <signal name="activate" handler="ui_appindicator_menu_show_cb" swapped="no"/>
   </object>
@@ -93,7 +104,8 @@
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="use_underline">True</property>
-        <property name="use_stock">True</property>
+        <property name="use_stock">False</property>
+        <property name="always_show_image">True</property>
       </object>
     </child>
     <child>
@@ -114,7 +126,8 @@
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="use_underline">True</property>
-        <property name="use_stock">True</property>
+        <property name="use_stock">False</property>
+        <property name="always_show_image">True</property>
       </object>
     </child>
     <child>
@@ -123,7 +136,8 @@
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="use_underline">True</property>
-        <property name="use_stock">True</property>
+        <property name="use_stock">False</property>
+        <property name="always_show_image">True</property>
       </object>
     </child>
     <child>
@@ -138,7 +152,8 @@
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="use_underline">True</property>
-        <property name="use_stock">True</property>
+        <property name="use_stock">False</property>
+        <property name="always_show_image">True</property>
       </object>
     </child>
     <child>
@@ -153,7 +168,8 @@
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="use_underline">True</property>
-        <property name="use_stock">True</property>
+        <property name="use_stock">False</property>
+        <property name="always_show_image">True</property>
       </object>
     </child>
   </object>

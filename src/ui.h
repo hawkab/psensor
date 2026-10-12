@@ -27,7 +27,7 @@
 #include <gtk/gtk.h>
 
 #if defined(HAVE_APPINDICATOR)
-#include <libappindicator/app-indicator.h>
+#include <libayatana-appindicator/app-indicator.h>
 #endif
 
 #include "psensor.h"
@@ -49,6 +49,8 @@ struct ui_psensor {
 	GtkTreeView *sensors_tree;
 
 	int graph_update_interval;
+	guint64 sample_generation, indicated_generation;
+	bool window_was_mapped;
 };
 
 /* Show the main psensor window. */

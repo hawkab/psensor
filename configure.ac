@@ -73,7 +73,7 @@ AC_SUBST(XEXT_LIBS)
 
 # Check GTK+ 3.0
 PKG_CHECK_MODULES(GTK,
-		  [gtk+-3.0 >= 3.4],,
+		  [gtk+-3.0 >= 3.22 gio-2.0 >= 2.66],,
 		  [AC_MSG_WARN("gtk missing psensor will not be built")])
 AM_CONDITIONAL(GTK, test -n "$GTK_LIBS")
 # ensure that only allowed headers are included
@@ -117,7 +117,7 @@ AC_SUBST(LIBNOTIFY_LIBS)
 
 # Checks AppIndicator 
 APPINDICATOR_LIBS=
-PKG_CHECK_MODULES(APPINDICATOR, appindicator3-0.1,
+PKG_CHECK_MODULES(APPINDICATOR, ayatana-appindicator3-0.1,
      [AC_DEFINE([HAVE_APPINDICATOR],[1],[Use AppIndicator3-0.1])],
      [AC_MSG_WARN(AppIndicator 3-0.1 not present")])
 AM_CONDITIONAL(APPINDICATOR, test -n "$APPINDICATOR_LIBS")
@@ -244,6 +244,7 @@ AC_SUBST(GTOP_LIBS)
 
 AC_CONFIG_FILES([
  Makefile
+ analysis/Makefile
  doc/Makefile
  src/Makefile
  src/glade/Makefile

@@ -15,6 +15,7 @@ SUBDIRS = doc \
 	icons/ubuntu-mono-light/status/22 \
 	icons/ubuntu-mono-dark/apps/22 \
 	www \
+	analysis \
 	tests
 
 dist_doc_DATA = AUTHORS \
@@ -28,7 +29,16 @@ dist_doc_DATA = AUTHORS \
 desktopdir = $(datadir)/applications
 desktop_DATA = psensor.desktop
 
-EXTRA_DIST = $(desktop_DATA) $(autostart_DATA)
+EXTRA_DIST = $(desktop_DATA) $(autostart_DATA) README.md \
+	scripts/install-user.py scripts/install-it87.sh \
+	doc/analysis/README.ru.md doc/analysis/PERFORMANCE.md doc/analysis/FANS.md \
+	tests/analysis/run.py tests/analysis/ui_fixture.py \
+	tests/analysis/test-model.py tests/analysis/test-history-store.py \
+	tests/analysis/test-lazy-ui.py tests/analysis/test-lifecycle.py \
+	tests/analysis/test-buffer-flush.py tests/analysis/test-actions.c \
+	tests/analysis/test-action-tab.c tests/analysis/test-notification.c \
+	tests/analysis/test-notification.py tests/analysis/test-tray-allocation.c \
+	tests/analysis/test-native-refresh.c tests/analysis/test-install-user.py
 
 if ASCIIDOCTOR
 README.html: README

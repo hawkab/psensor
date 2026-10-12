@@ -1,2 +1,7 @@
 *log
 *trs
+test-io-dir-list
+test-psensor-type-to-unit-str
+test-psensor-value-to-str
+test-url-encode
+test-url-normalize

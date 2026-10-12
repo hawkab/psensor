@@ -12,3 +12,6 @@ stamp-h1
 configure
 aclocal.m4
 config.h.in
+__pycache__/
+*.pyc
+*~

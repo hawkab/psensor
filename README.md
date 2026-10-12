@@ -2,6 +2,26 @@
 
 Psensor is a graphical hardware monitoring application for Linux.
 
+This branch adds a compact **heat and load explanation** opened from the tray,
+recent process history, optional detailed graphs, a read-only process inspector,
+per-sensor sustained-threshold commands, and native desktop notifications that
+open the relevant sensor through a `psensor://` link. The new interface is in Russian.
+
+It also fixes tray icons, keeps GTK responsive when sensor providers are busy,
+and reduces background/UI work. The history collector runs every two seconds;
+analysis, graphs and inspector work load only when their windows are requested.
+
+**Build, install and use this branch:** [Russian guide](doc/analysis/README.ru.md).
+See [performance and architecture](doc/analysis/PERFORMANCE.md) and
+[optional IT8689 fan monitoring](doc/analysis/FANS.md).
+
+The branch starts from `chinf/psensor`'s `master` (`4270c90`), fast-forwarded
+through the official GitLab history to `7e4173d` before the feature changes.
+[PR #35](https://github.com/chinf/psensor/pull/35) was reviewed; its graph-group
+and Psensor2 feature branch is not included. The manpage build dependency was
+adapted from its approach. The attribution, command rules, notifications,
+lazy UI and performance fixes are implemented here.
+
 It draws realtime charts and raises alerts about:
 
  * the temperature of the motherboard and CPU sensors (using
@@ -78,13 +98,13 @@ The compilation of `psensor` requires:
  * gcc (or llvm)
  * lm-sensors
  * library sensors4
- * library gtk3 >=3.4
+ * library gtk3 >=3.22 and GLib/GIO >=2.66
  * help2man (optional, required to produce the manpage)
  * asciidoctor (optional, required to produce the html version of the
    faq)
  * cppcheck (optional, static source checker)
  * library libnotify (optional)
- * library libappindicator >= 3.0 (optional)
+ * library Ayatana AppIndicator 3 (required for the analysis tray entry)
  * library libXNVCtrl (optional)
  * library json-c >= 0.11.99 and curl (optional, required for remote monitoring)
  * library unity (>=v3.4.2, optional)

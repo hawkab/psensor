@@ -27,7 +27,7 @@
 void notify_cmd(struct psensor *s)
 {
 	char *script, *v, *cmd;
-	int ret;
+	GError *error = NULL;
 
 	script = config_get_notif_script();
 
@@ -45,11 +45,18 @@ void notify_cmd(struct psensor *s)
 
 		sprintf(cmd, "%s \"%s\" %s", script, s->id, v);
 
-		log_fct("execute cmd: %s", cmd);
-
-		ret = system(cmd);
-
-		log_fct("cmd returns: %d", ret);
+		/* Notification scripts must not hold up sensor polling or GTK.
+		 */
+		{
+			gchar *args[] = {"/bin/sh", "-c", cmd, NULL};
+			if (!g_spawn_async(NULL, args, NULL, 0, NULL, NULL,
+					   NULL, &error)) {
+				log_warn(
+				    "Cannot launch notification command: %s",
+				    error->message);
+				g_error_free(error);
+			}
+		}
 
 		free(cmd);
 		free(v);

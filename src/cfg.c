@@ -18,6 +18,7 @@
  */
 
 #include <errno.h>
+#include <glib/gstdio.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -573,6 +574,8 @@ static void save_sensor_key_file(void)
 
 	if (!g_file_set_contents(path, data, -1, NULL))
 		log_err(_("Failed to save configuration file %s."), path);
+	else
+		g_chmod(path, 0600);
 
 	free(data);
 
@@ -689,6 +692,43 @@ static void sensor_set_int(const char *sid, const char *att, int i)
 	kfile = get_sensor_key_file();
 
 	g_key_file_set_integer(kfile, sid, att, i);
+}
+
+void config_get_sensor_action(const char *sid, struct sensor_action *rule)
+{
+	GKeyFile *file = get_sensor_key_file();
+	rule->enabled =
+	    g_key_file_get_boolean(file, sid, "action_enabled", NULL);
+	rule->below = g_key_file_get_boolean(file, sid, "action_below", NULL);
+	rule->threshold =
+	    g_key_file_has_key(file, sid, "action_threshold", NULL)
+		? g_key_file_get_double(file, sid, "action_threshold", NULL)
+		: 85.0;
+	rule->hysteresis =
+	    g_key_file_has_key(file, sid, "action_hysteresis", NULL)
+		? MAX(0, g_key_file_get_double(file, sid, "action_hysteresis",
+					       NULL))
+		: 2.0;
+	rule->seconds =
+	    g_key_file_has_key(file, sid, "action_seconds", NULL)
+		? MAX(1,
+		      g_key_file_get_integer(file, sid, "action_seconds", NULL))
+		: 30;
+	rule->command =
+	    g_key_file_get_string(file, sid, "action_command", NULL);
+}
+
+void config_set_sensor_action(const char *sid, const struct sensor_action *rule)
+{
+	GKeyFile *file = get_sensor_key_file();
+	g_key_file_set_boolean(file, sid, "action_enabled", rule->enabled);
+	g_key_file_set_boolean(file, sid, "action_below", rule->below);
+	g_key_file_set_double(file, sid, "action_threshold", rule->threshold);
+	g_key_file_set_double(file, sid, "action_hysteresis", rule->hysteresis);
+	g_key_file_set_integer(file, sid, "action_seconds",
+			       MAX(1, rule->seconds));
+	g_key_file_set_string(file, sid, "action_command",
+			      rule->command ? rule->command : "");
 }
 
 char *config_get_sensor_name(const char *sid)

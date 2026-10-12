@@ -2,6 +2,9 @@ SUBDIRS = lib glade
 
 psensor_SOURCES = \
 	cfg.h cfg.c \
+	sensor_action.h sensor_action.c \
+	action_tab.h action_tab.c \
+	action_notify.h action_notify.c \
 	notify_cmd.c notify_cmd.h \
 	graph.h graph.c \
 	main.c \
@@ -48,7 +51,9 @@ if GTK
 if X11
 if XEXT
 bin_PROGRAMS = psensor
+if HELP2MAN
 dist_man_MANS = psensor.1
+endif
 endif
 endif
 endif
@@ -106,9 +111,8 @@ endif
 endif
 
 if HELP2MAN
-psensor.1: main.c $(top_srcdir)/configure.ac
-	$(MAKE) $(AM_MAKEFLAGS) psensor$(EXEEXT)
-	help2man --include=description.txt -N --name="Temperature monitoring application" --output=psensor.1 ./psensor$(EXEEXT)
+psensor.1: psensor$(EXEEXT) $(srcdir)/description.txt
+	help2man --include=$(srcdir)/description.txt -N --name="Temperature monitoring application" --output=psensor.1 ./psensor$(EXEEXT)
 endif
 
 gsettings_SCHEMAS=psensor.gschema.xml
@@ -123,3 +127,6 @@ EXTRA_DIST = description.txt\
 if GSETTINGS
 @GSETTINGS_RULES@
 endif
+
+# Adapted from chinf/psensor PR #35: clean generated man page.
+DISTCLEANFILES = psensor.1

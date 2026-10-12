@@ -40,6 +40,10 @@
 #include <nvidia.h>
 #include <pgtop2.h>
 #include <pmutex.h>
+#include <sensor_action.h>
+#include <action_notify.h>
+#include <action_tab.h>
+#include <ui_sensorpref.h>
 #include <psensor.h>
 #include <pudisks2.h>
 #include <rsensor.h>
@@ -148,6 +152,7 @@ static void *update_measures(void *data)
 		bcm2835_psensor_list_update(sensors);
 
 		psensor_log_measures(sensors);
+		ui->sample_generation++;
 
 		period = cfg->sensor_update_interval;
 
@@ -182,6 +187,16 @@ static void indicators_update(struct ui_psensor *ui)
 		ui_status_update(ui, attention);
 }
 
+static gboolean actions_refresh(gpointer data)
+{
+	struct ui_psensor *ui = data;
+	if (pthread_mutex_trylock(&ui->sensors_mutex) == 0) {
+		sensor_actions_tick(ui);
+		pmutex_unlock(&ui->sensors_mutex);
+	}
+	return G_SOURCE_CONTINUE;
+}
+
 static gboolean ui_refresh_thread(gpointer data)
 {
 	struct config *cfg;
@@ -191,16 +206,25 @@ static gboolean ui_refresh_thread(gpointer data)
 	ret = TRUE;
 	cfg = ui->config;
 
-	pmutex_lock(&ui->sensors_mutex);
+	/* A stalled sensor must never block the GTK event loop. */
+	if (pthread_mutex_trylock(&ui->sensors_mutex) != 0)
+		return G_SOURCE_CONTINUE;
 
-	graph_update(ui->sensors, ui_get_graph(), ui->config, ui->main_window);
+	if (gtk_widget_get_mapped(ui->main_window) &&
+	    (ui->sample_generation != ui->indicated_generation ||
+	     !ui->window_was_mapped)) {
+		graph_update(ui->sensors, ui_get_graph(), ui->config,
+			     ui->main_window);
+		ui_sensorlist_update(ui, 0);
+	}
+	ui->window_was_mapped = gtk_widget_get_mapped(ui->main_window);
 
-	ui_sensorlist_update(ui, 0);
-
-	if (is_appindicator_supported() || is_status_supported())
-		indicators_update(ui);
-
-	ui_unity_launcher_entry_update(ui->sensors);
+	if (ui->sample_generation != ui->indicated_generation) {
+		if (is_appindicator_supported() || is_status_supported())
+			indicators_update(ui);
+		ui_unity_launcher_entry_update(ui->sensors);
+		ui->indicated_generation = ui->sample_generation;
+	}
 
 	if (ui->graph_update_interval != cfg->graph_update_interval) {
 		ui->graph_update_interval = cfg->graph_update_interval;
@@ -356,12 +380,60 @@ static void cb_activate(GApplication *application,
 	ui_window_show((struct ui_psensor *)data);
 }
 
+static void cb_open(GApplication *application, GFile **files, gint count,
+		    const gchar *hint, gpointer data)
+{
+	struct ui_psensor *ui = data;
+	int i;
+	for (i = 0; i < count; i++) {
+		GError *error = NULL;
+		char *uri = g_file_get_uri(files[i]);
+		char *id = sensor_action_id_from_uri(uri, &error);
+		struct psensor *sensor =
+		    id ? psensor_list_get_by_id(ui->sensors, id) : NULL;
+		if (sensor) {
+			ui_sensorpref_dialog_run(sensor, ui);
+			action_tab_focus();
+		} else {
+			GtkWidget *dialog = gtk_message_dialog_new(
+			    GTK_WINDOW(ui->main_window),
+			    GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_INFO,
+			    GTK_BUTTONS_CLOSE, "%s",
+			    error ? error->message
+				  : "Этот датчик сейчас недоступен");
+			g_signal_connect(dialog, "response",
+					 G_CALLBACK(gtk_widget_destroy), NULL);
+			gtk_widget_show(dialog);
+		}
+		g_clear_error(&error);
+		g_free(id);
+		g_free(uri);
+	}
+}
+
+static void open_arguments(GApplication *app, int count, char **arguments)
+{
+	GFile **files = g_new(GFile *, count);
+	int i;
+	for (i = 0; i < count; i++)
+		files[i] = g_file_new_for_uri(arguments[i]);
+	g_application_open(app, files, count, "");
+	for (i = 0; i < count; i++)
+		g_object_unref(files[i]);
+	g_free(files);
+}
+
 /*
  * Release memory for Valgrind.
  */
 static void cleanup(struct ui_psensor *ui)
 {
-	pmutex_lock(&ui->sensors_mutex);
+	/* Process exit reclaims memory if a provider is still blocked. */
+	if (pthread_mutex_trylock(&ui->sensors_mutex) != 0) {
+		log_warn(
+		    "Sensor worker busy at exit; skipping optional cleanup");
+		return;
+	}
 
 	log_debug("Cleanup...");
 
@@ -436,7 +508,7 @@ static struct psensor **create_sensors_list(const char *url)
 
 int main(int argc, char **argv)
 {
-	struct ui_psensor ui;
+	struct ui_psensor ui = {0};
 	pthread_t thread;
 	int optc, cmdok, opti, new_instance, ret;
 	char *url = NULL;
@@ -480,7 +552,10 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (!cmdok || optind != argc) {
+	for (opti = optind; opti < argc; opti++)
+		if (!g_str_has_prefix(argv[opti], "psensor://"))
+			cmdok = 0;
+	if (!cmdok) {
 		fprintf(stderr, _("Try `%s --help' for more information.\n"),
 			program_name);
 		exit(EXIT_FAILURE);
@@ -488,17 +563,22 @@ int main(int argc, char **argv)
 
 	log_init();
 
-	app = g_application_new("wpitchoune.psensor", 0);
+	app =
+	    g_application_new("wpitchoune.psensor", G_APPLICATION_HANDLES_OPEN);
 
 	g_application_register(app, NULL, NULL);
 
 	if (!new_instance && g_application_get_is_remote(app)) {
-		g_application_activate(app);
+		if (optind < argc)
+			open_arguments(app, argc - optind, argv + optind);
+		else
+			g_application_activate(app);
 		log_warn(_("A Psensor instance already exists."));
 		exit(EXIT_SUCCESS);
 	}
 
 	g_signal_connect(app, "activate", G_CALLBACK(cb_activate), &ui);
+	g_signal_connect(app, "open", G_CALLBACK(cb_open), &ui);
 
 	log_glib_info();
 #if !(GLIB_CHECK_VERSION(2, 31, 0))
@@ -525,8 +605,11 @@ int main(int argc, char **argv)
 			      &ui.sensors_mutex,
 			      config_get_slog_interval());
 
+	/* AppIndicator creates a legacy icon only if its fallback is needed. */
+#ifndef HAVE_APPINDICATOR
 	ui_status_init(&ui);
 	ui_status_set_visible(1);
+#endif
 
 	/* main window */
 	ui_window_create(&ui);
@@ -541,6 +624,7 @@ int main(int argc, char **argv)
 	ui.graph_update_interval = ui.config->graph_update_interval;
 
 	g_timeout_add(1000 * ui.graph_update_interval, ui_refresh_thread, &ui);
+	sensor_actions_init(&ui, actions_refresh);
 
 	ui_appindicator_init(&ui);
 	ui_unity_init();
@@ -557,6 +641,8 @@ int main(int argc, char **argv)
 		g_timeout_add(30000, (GSourceFunc)check_ui_visible, &ui);
 	else
 		ui_window_show(&ui);
+	if (optind < argc)
+		open_arguments(app, argc - optind, argv + optind);
 
 	/* main loop */
 	gtk_main();

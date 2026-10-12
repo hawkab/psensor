@@ -19,9 +19,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 
 #include <gtk/gtk.h>
-#include <libappindicator/app-indicator.h>
+#include <libayatana-appindicator/app-indicator.h>
 
 #include <cfg.h>
 #include <psensor.h>
@@ -39,9 +40,140 @@ static const char *GLADE_FILE
 
 static struct psensor **sensors;
 static GtkMenuItem **menu_items;
+static struct psensor **label_sensors;
 static bool appindicator_supported = true;
 static AppIndicator *indicator;
 static struct ui_psensor *ui_psensor;
+static GPid analysis_pid;
+
+/* Normal make install uses datadir; retain the original per-user layout too. */
+static gchar *analysis_file(const gchar *name)
+{
+	const gchar *override = g_getenv("PSENSOR_ANALYSIS_DIR");
+	gchar *path;
+	if (override && *override)
+		return g_build_filename(override, name, NULL);
+	path = g_build_filename(DATADIR, "psensor-analysis", name, NULL);
+	if (g_file_test(path, G_FILE_TEST_IS_REGULAR))
+		return path;
+	g_free(path);
+	return g_build_filename(g_get_user_data_dir(), "psensor-analysis", name,
+				NULL);
+}
+
+static void analysis_closed(GPid pid, gint status, gpointer data)
+{
+	analysis_pid = 0;
+	g_spawn_close_pid(pid);
+}
+
+static void spawn_analysis(void)
+{
+	if (analysis_pid)
+		return;
+	gchar *path = analysis_file("load-window.py");
+	gchar *args[] = {"/usr/bin/python3", path, NULL};
+	GError *error = NULL;
+	if (!g_spawn_async(NULL, args, NULL, G_SPAWN_DO_NOT_REAP_CHILD, NULL,
+			   NULL, &analysis_pid, &error)) {
+		log_err("Cannot open load analysis: %s", error->message);
+		g_error_free(error);
+	} else
+		g_child_watch_add(analysis_pid, analysis_closed, NULL);
+	g_free(path);
+}
+
+static void analysis_owner(GObject *object, GAsyncResult *result, gpointer data)
+{
+	GError *error = NULL;
+	GVariant *reply = g_dbus_connection_call_finish(
+	    G_DBUS_CONNECTION(object), result, &error);
+	gboolean owner = FALSE;
+	if (reply) {
+		g_variant_get(reply, "(b)", &owner);
+		g_variant_unref(reply);
+	}
+	g_clear_error(&error);
+	if (owner) {
+		GVariantBuilder options;
+		g_variant_builder_init(&options, G_VARIANT_TYPE_VARDICT);
+		g_dbus_connection_call(
+		    G_DBUS_CONNECTION(object), "local.psensor.LoadAnalysis",
+		    "/local/psensor/LoadAnalysis",
+		    "org.freedesktop.Application", "Activate",
+		    g_variant_new("(@a{sv})", g_variant_builder_end(&options)),
+		    NULL, G_DBUS_CALL_FLAGS_NONE, 2000, NULL, NULL, NULL);
+	} else
+		spawn_analysis();
+}
+
+static void analysis_bus(GObject *object, GAsyncResult *result, gpointer data)
+{
+	GError *error = NULL;
+	GDBusConnection *bus = g_bus_get_finish(result, &error);
+	if (!bus) {
+		g_clear_error(&error);
+		spawn_analysis();
+		return;
+	}
+	/* Publish the latest buffered sample before opening the first view. */
+	g_dbus_connection_call(
+	    bus, "org.freedesktop.systemd1", "/org/freedesktop/systemd1",
+	    "org.freedesktop.systemd1.Manager", "KillUnit",
+	    g_variant_new("(ssi)", "psensor-analysis.service", "main", SIGUSR1),
+	    NULL, G_DBUS_CALL_FLAGS_NONE, 2000, NULL, NULL, NULL);
+	g_dbus_connection_call(
+	    bus, "org.freedesktop.DBus", "/org/freedesktop/DBus",
+	    "org.freedesktop.DBus", "NameHasOwner",
+	    g_variant_new("(s)", "local.psensor.LoadAnalysis"),
+	    G_VARIANT_TYPE("(b)"), G_DBUS_CALL_FLAGS_NONE, 2000, NULL,
+	    analysis_owner, NULL);
+	g_object_unref(bus);
+}
+
+/* The analysis window has its own event loop and reads interval history. */
+static void open_analysis(GtkMenuItem *item, gpointer unused)
+{
+	g_bus_get(G_BUS_TYPE_SESSION, NULL, analysis_bus, NULL);
+}
+
+static void set_menu_icons(GtkBuilder *builder)
+{
+	const char *ids[] = {"menuitem8", "menuitem1", "menuitem2", "menuitem5",
+			     "menuitem7"};
+	const char *names[] = {
+	    "utilities-system-monitor-symbolic", "preferences-system-symbolic",
+	    "preferences-other-symbolic", "help-about-symbolic",
+	    "application-exit-symbolic"};
+	unsigned int i;
+	for (i = 0; i < sizeof(ids) / sizeof(ids[0]); i++) {
+		GtkWidget *item =
+		    GTK_WIDGET(gtk_builder_get_object(builder, ids[i]));
+		GtkWidget *image =
+		    gtk_image_new_from_icon_name(names[i], GTK_ICON_SIZE_MENU);
+		gtk_image_menu_item_set_use_stock(GTK_IMAGE_MENU_ITEM(item),
+						  FALSE);
+		gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(item), image);
+		gtk_image_menu_item_set_always_show_image(
+		    GTK_IMAGE_MENU_ITEM(item), TRUE);
+		gtk_widget_show(image);
+	}
+}
+
+static void create_analysis(GtkMenu *menu)
+{
+	GtkWidget *item =
+	    gtk_image_menu_item_new_with_label("Анализ нагрузки и нагрева");
+	GtkWidget *image = gtk_image_new_from_icon_name(
+	    "utilities-system-monitor-symbolic", GTK_ICON_SIZE_MENU);
+	gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(item), image);
+	gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(item),
+						  TRUE);
+	g_signal_connect(item, "activate", G_CALLBACK(open_analysis), NULL);
+	gtk_menu_shell_insert(GTK_MENU_SHELL(menu), item, 0);
+	gtk_menu_shell_insert(GTK_MENU_SHELL(menu),
+			      gtk_separator_menu_item_new(), 1);
+}
 
 void ui_appindicator_menu_show_cb(GtkMenuItem *mi, gpointer data)
 {
@@ -71,7 +203,8 @@ update_menu_item(GtkMenuItem *item, struct psensor *s, int use_celsius)
 
 	str = g_strdup_printf("%s: %s", s->name, v);
 
-	gtk_menu_item_set_label(item, str);
+	if (g_strcmp0(gtk_menu_item_get_label(item), str) != 0)
+		gtk_menu_item_set_label(item, str);
 
 	free(v);
 	g_free(str);
@@ -92,7 +225,7 @@ static void update_menu_items(int use_celsius)
 static void
 create_sensor_menu_items(const struct ui_psensor *ui, GtkMenu *menu)
 {
-	int i, j, n, celsius;
+	int i, j, k, n, celsius;
 	const char *name;
 	struct psensor **sorted_sensors;
 
@@ -106,7 +239,10 @@ create_sensor_menu_items(const struct ui_psensor *ui, GtkMenu *menu)
 	menu_items = malloc((n + 1) * sizeof(GtkWidget *));
 
 	sensors = malloc((n + 1) * sizeof(struct psensor *));
-	for (i = 0, j = 0; i < n; i++) {
+	label_sensors = malloc((n + 1) * sizeof(struct psensor *));
+	for (i = 0, j = 0, k = 0; i < n; i++) {
+		if (config_is_appindicator_label_enabled(sorted_sensors[i]->id))
+			label_sensors[k++] = sorted_sensors[i];
 		if (config_is_appindicator_enabled(sorted_sensors[i]->id)) {
 			sensors[j] = sorted_sensors[i];
 			name = sensors[j]->name;
@@ -125,6 +261,7 @@ create_sensor_menu_items(const struct ui_psensor *ui, GtkMenu *menu)
 	}
 
 	sensors[j] = NULL;
+	label_sensors[k] = NULL;
 	menu_items[j] = NULL;
 
 	free(sorted_sensors);
@@ -154,7 +291,9 @@ static GtkMenu *load_menu(struct ui_psensor *ui)
 
 	menu = GTK_MENU(gtk_builder_get_object(builder, "appindicator_menu"));
 	create_sensor_menu_items(ui, menu);
+	create_analysis(menu);
 	gtk_builder_connect_signals(builder, ui);
+	set_menu_icons(builder);
 
 	g_object_ref(G_OBJECT(menu));
 	g_object_unref(G_OBJECT(builder));
@@ -170,7 +309,11 @@ static void update_label(struct ui_psensor *ui)
 	struct psensor **p;
 	int use_celsius;
 
-	p =  ui_get_sensors_ordered_by_position(ui->sensors);
+	p = label_sensors;
+	if (!p || !*p) {
+		app_indicator_set_label(indicator, NULL, NULL);
+		return;
+	}
 	label = NULL;
 	guide = NULL;
 
@@ -180,7 +323,7 @@ static void update_label(struct ui_psensor *ui)
 		use_celsius = 0;
 
 	while (*p) {
-		if (config_is_appindicator_label_enabled((*p)->id)) {
+		{
 			str = psensor_current_value_to_str(*p, use_celsius);
 
 			if (label == NULL) {
@@ -214,12 +357,13 @@ static void update_label(struct ui_psensor *ui)
 				free(guide);
 				guide = tmp;
 			}
-
 		}
 		p++;
 	}
 
 	app_indicator_set_label(indicator, label, guide);
+	free(label);
+	free(guide);
 }
 
 void ui_appindicator_update(struct ui_psensor *ui, bool attention)
@@ -288,11 +432,15 @@ static void remove_sensor_menu_items(GtkMenu *menu)
 
 	free(menu_items);
 	free(sensors);
+	free(label_sensors);
+	label_sensors = NULL;
 }
 
 void ui_appindicator_update_menu(struct ui_psensor *ui)
 {
 	GtkMenu *menu;
+	/* Preferences can change labels/units without a new hardware sample. */
+	ui->indicated_generation = G_MAXUINT64;
 
 	menu = GTK_MENU(app_indicator_get_menu(indicator));
 
@@ -308,13 +456,17 @@ void ui_appindicator_update_menu(struct ui_psensor *ui)
 		}
 	}
 
-	if (menu)
+	if (menu) {
 		gtk_widget_show_all(GTK_WIDGET(menu));
+	}
 }
 
 void ui_appindicator_init(struct ui_psensor *ui)
 {
 	ui_psensor = ui;
+	/* Absolute PNG paths avoid icon-theme lookup failures in tray hosts. */
+	ICON = analysis_file("icons/psensor_normal.png");
+	ATTENTION_ICON = analysis_file("icons/psensor_hot.png");
 
 	indicator = app_indicator_new
 		("psensor",
@@ -338,4 +490,6 @@ bool is_appindicator_supported(void)
 void ui_appindicator_cleanup(void)
 {
 	free(sensors);
+	free(menu_items);
+	free(label_sensors);
 }

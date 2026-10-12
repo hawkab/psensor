@@ -38,7 +38,9 @@ on_expose_event(GtkWidget *widget, GdkEventExpose *event, gpointer data)
 {
 	struct ui_psensor *ui_psensor = (struct ui_psensor *)data;
 
-	pmutex_lock(&ui_psensor->sensors_mutex);
+	/* Drawing must never wait for a stalled sensor provider. */
+	if (pthread_mutex_trylock(&ui_psensor->sensors_mutex) != 0)
+		return FALSE;
 	graph_update(ui_psensor->sensors,
 		     ui_get_graph(),
 		     ui_psensor->config,

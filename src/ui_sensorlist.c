@@ -366,9 +366,12 @@ void ui_sensorlist_cb_graph_toggled(GtkCellRendererToggle *cell,
 	}
 
 	/* redraw graph */
-	pmutex_lock(&ui->sensors_mutex);
-	graph_update(ui->sensors, ui_get_graph(), ui->config, ui->main_window);
-	pmutex_unlock(&ui->sensors_mutex);
+	/* The regular refresh will redraw once the sensor worker is ready. */
+	if (pthread_mutex_trylock(&ui->sensors_mutex) == 0) {
+		graph_update(ui->sensors, ui_get_graph(), ui->config,
+			     ui->main_window);
+		pmutex_unlock(&ui->sensors_mutex);
+	}
 }
 
 void ui_sensorlist_create(struct ui_psensor *ui)

@@ -21,6 +21,7 @@
 #include <gtk/gtk.h>
 
 #include <cfg.h>
+#include <action_tab.h>
 #include <temperature.h>
 #include <ui_appindicator.h>
 #include <ui_color.h>
@@ -279,6 +280,11 @@ static void update_pref(struct psensor *s)
 		return;
 
 	ignore_changes = true;
+	{
+		char *title = g_strdup_printf("Датчик: %s", s->name);
+		gtk_window_set_title(GTK_WINDOW(w_dialog), title);
+		g_free(title);
+	}
 
 	gtk_label_set_text(w_sensor_id, s->id);
 	gtk_label_set_text(w_sensor_type, psensor_type_to_str(s->type));
@@ -358,6 +364,7 @@ static void update_pref(struct psensor *s)
 		(w_appindicator_label_enabled,
 		 config_is_appindicator_label_enabled(s->id));
 
+	action_tab_update(s);
 	ignore_changes = false;
 }
 
@@ -379,6 +386,8 @@ static void select_sensor(struct psensor *s, struct psensor **sensors)
 			p = gtk_tree_path_new_from_indices(i, -1);
 			sel = gtk_tree_view_get_selection(w_sensors_list);
 			gtk_tree_selection_select_path(sel, p);
+			gtk_tree_view_scroll_to_cell(w_sensors_list, p, NULL,
+						     TRUE, 0.5, 0.0);
 
 			gtk_tree_path_free(p);
 
@@ -428,6 +437,19 @@ static GtkBuilder *load_ui(struct ui_psensor *ui)
 	w_sensors_list = GTK_TREE_VIEW
 		(gtk_builder_get_object(builder, "sensors_list"));
 	w_dialog = GTK_DIALOG(gtk_builder_get_object(builder, "dialog1"));
+	{
+		GdkDisplay *display =
+		    gtk_widget_get_display(GTK_WIDGET(w_dialog));
+		GdkMonitor *monitor = gdk_display_get_primary_monitor(display);
+		GdkRectangle area = {0, 0, 900, 760};
+		if (!monitor && gdk_display_get_n_monitors(display) > 0)
+			monitor = gdk_display_get_monitor(display, 0);
+		if (monitor)
+			gdk_monitor_get_workarea(monitor, &area);
+		gtk_window_set_default_size(GTK_WINDOW(w_dialog),
+					    MIN(860, area.width - 40),
+					    MIN(660, area.height - 80));
+	}
 	w_sensor_id = GTK_LABEL(gtk_builder_get_object(builder, "sensor_id"));
 	w_sensor_type = GTK_LABEL
 		(gtk_builder_get_object(builder, "sensor_type"));
@@ -466,6 +488,9 @@ static GtkBuilder *load_ui(struct ui_psensor *ui)
 
 	store = GTK_LIST_STORE(gtk_builder_get_object(builder,
 						      "sensors_liststore"));
+	action_tab_create(
+	    GTK_NOTEBOOK(gtk_builder_get_object(builder, "notebook2")),
+	    get_selected_sensor);
 
 	gtk_window_set_transient_for(GTK_WINDOW(w_dialog),
 				     GTK_WINDOW(ui->main_window));

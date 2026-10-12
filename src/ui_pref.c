@@ -314,13 +314,24 @@ void ui_pref_dialog_run(struct ui_psensor *ui)
 				     GTK_WINDOW(ui->main_window));
 	gtk_builder_connect_signals(builder, NULL);
 
-	result = gtk_dialog_run(diag);
+	/* Keep the dialog responsive if the sensor worker cannot release its
+	 * lock. */
+	while ((result = gtk_dialog_run(diag)) == GTK_RESPONSE_ACCEPT) {
+		GtkWidget *warning;
+		if (pthread_mutex_trylock(&ui->sensors_mutex) == 0)
+			break;
+		warning = gtk_message_dialog_new(
+		    GTK_WINDOW(diag), GTK_DIALOG_MODAL, GTK_MESSAGE_WARNING,
+		    GTK_BUTTONS_OK,
+		    _("Sensors are busy. Settings have not been saved. "
+		      "Please try applying them again in a moment."));
+		gtk_dialog_run(GTK_DIALOG(warning));
+		gtk_widget_destroy(warning);
+	}
 
 	if (result == GTK_RESPONSE_ACCEPT) {
 		double value;
 		GdkRGBA color;
-
-		pthread_mutex_lock(&ui->sensors_mutex);
 
 		config_set_notif_script
 			(gtk_entry_get_text(GTK_ENTRY(w_notif_script)));
@@ -394,6 +405,7 @@ void ui_pref_dialog_run(struct ui_psensor *ui)
 
 		config_set_udisks2_enable
 			(gtk_toggle_button_get_active(w_udisks2));
+		ui->indicated_generation = G_MAXUINT64;
 
 		pxdg_set_autostart(gtk_toggle_button_get_active(w_autostart));
 
