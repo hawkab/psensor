@@ -784,6 +784,28 @@ void config_set_cooling_rule(const char *sid, const struct cooling_rule *rule)
 	g_key_file_set_integer(file, sid, "cooling_saver_seconds", rule->saver_seconds);
 }
 
+void config_get_tray_color(const char *sid, struct tray_color_rule *rule)
+{
+	GKeyFile *file = get_sensor_key_file();
+	*rule = (struct tray_color_rule){
+		.enabled = g_key_file_get_boolean(file, sid, "tray_color_enabled", NULL),
+		.warm = g_key_file_has_key(file, sid, "tray_color_warm", NULL)
+			? g_key_file_get_double(file, sid, "tray_color_warm", NULL) : 90,
+		.hot = g_key_file_has_key(file, sid, "tray_color_hot", NULL)
+			? g_key_file_get_double(file, sid, "tray_color_hot", NULL) : 95
+	};
+	if (!isfinite(rule->warm) || !isfinite(rule->hot) || rule->warm >= rule->hot)
+		rule->enabled = false;
+}
+
+void config_set_tray_color(const char *sid, const struct tray_color_rule *rule)
+{
+	GKeyFile *file = get_sensor_key_file();
+	g_key_file_set_boolean(file, sid, "tray_color_enabled", rule->enabled);
+	g_key_file_set_double(file, sid, "tray_color_warm", rule->warm);
+	g_key_file_set_double(file, sid, "tray_color_hot", rule->hot);
+}
+
 char *config_get_sensor_name(const char *sid)
 {
 	return sensor_get_str(sid, ATT_SENSOR_NAME);

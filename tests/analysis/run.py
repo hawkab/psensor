@@ -36,14 +36,19 @@ def main():
                   *shlex.split(os.environ.get('CPPFLAGS','')), *flags]
         for name, source in [('test-cooling','cooling_policy.c'),('test-actions','sensor_action.c'),('test-action-tab','action_tab.c'),
                              ('test-notification','action_notify.c'),('test-tray-allocation',None),
-                             ('test-native-refresh',None),('test-cooling-runtime',None),('test-cooling-config',None)]:
+                             ('test-native-refresh',None),('test-cooling-runtime',None),('test-cooling-config',None),
+                             ('test-tray-color',None),('test-tray-tab','tray_tab.c'),('test-tray-dbus',None)]:
             extra = [ROOT/'src/lib/temperature.c', ROOT/'src/cooling_tab.c'] if name == 'test-action-tab' else []
+            if name == 'test-tray-tab': extra = [ROOT/'src/lib/temperature.c']
             run([*common, TESTS/(name+'.c'), *([ROOT/'src'/source] if source else []), *extra,
                  *libs, '-lm','-pthread','-o',outputs/name], env=env)
-        for name in ('test-cooling','test-cooling-runtime','test-cooling-config','test-actions','test-tray-allocation','test-native-refresh'):
+        for name in ('test-cooling','test-cooling-runtime','test-cooling-config','test-actions','test-tray-allocation','test-native-refresh','test-tray-color'):
             run([outputs/name], env=env)
         if not args.no_gui:
             run(['dbus-run-session','--','xvfb-run','-a',outputs/'test-action-tab'], env=env)
+            run(['dbus-run-session','--','xvfb-run','-a',outputs/'test-tray-tab'], env=env)
+            run(['dbus-run-session','--','xvfb-run','-a','/usr/bin/python3',TESTS/'test-tray-dbus.py'],
+                env={**env,'PSENSOR_TEST_TRAY_BINARY':str(outputs/'test-tray-dbus')})
             for name in ('test-lazy-ui.py','test-lifecycle.py','test-notification.py','test-process-menu.py'):
                 case_env = {**env,'PSENSOR_TEST_NOTIFICATION_BINARY':str(outputs/'test-notification')}
                 run(['dbus-run-session','--','xvfb-run','-a','/usr/bin/python3',TESTS/name], env=case_env)

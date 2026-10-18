@@ -24,6 +24,7 @@ static const char *ATTENTION_ICON = "psensor_hot";
 
 static GtkStatusIcon *status;
 static unsigned int status_attention;
+static char *current_path, *current_description;
 
 static void cb_activate(GtkStatusIcon *icon,
 			gpointer data)
@@ -74,6 +75,22 @@ void ui_status_cleanup(void)
 	if (status) {
 		g_object_unref(G_OBJECT(status));
 		status = NULL;
+	}
+	g_clear_pointer(&current_path, g_free);
+	g_clear_pointer(&current_description, g_free);
+}
+
+void ui_status_set_tray_icon(const char *path, const char *description)
+{
+	if (status && g_strcmp0(current_path, path) != 0) {
+		gtk_status_icon_set_from_file(status, path);
+		g_free(current_path);
+		current_path = g_strdup(path);
+	}
+	if (status && g_strcmp0(current_description, description) != 0) {
+		gtk_status_icon_set_tooltip_text(status, description);
+		g_free(current_description);
+		current_description = g_strdup(description);
 	}
 }
 

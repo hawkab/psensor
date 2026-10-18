@@ -28,6 +28,7 @@
 #include <ui_pref.h>
 #include <ui_sensorlist.h>
 #include <ui_sensorpref.h>
+#include <tray_tab.h>
 
 enum {
 	COL_NAME = 0,
@@ -365,6 +366,7 @@ static void update_pref(struct psensor *s)
 		 config_is_appindicator_label_enabled(s->id));
 
 	action_tab_update(s);
+	tray_tab_update(s);
 	ignore_changes = false;
 }
 
@@ -491,6 +493,8 @@ static GtkBuilder *load_ui(struct ui_psensor *ui)
 	action_tab_create(
 	    GTK_NOTEBOOK(gtk_builder_get_object(builder, "notebook2")),
 	    get_selected_sensor);
+	tray_tab_create(GTK_GRID(gtk_builder_get_object(builder, "grid3")),
+		get_selected_sensor, ui);
 
 	gtk_window_set_transient_for(GTK_WINDOW(w_dialog),
 				     GTK_WINDOW(ui->main_window));

@@ -14,6 +14,8 @@ other users' processes use a standard polkit authorization prompt.
 It also fixes tray icons, keeps GTK responsive when sensor providers are busy,
 and reduces background/UI work. The history collector runs every two seconds;
 analysis, graphs and inspector work load only when their windows are requested.
+Optional temperature colors turn the tray icon orange at 90–95 °C and blink red
+above 95 °C; both thresholds are configurable independently of cooling timers.
 
 **Build, install and use this branch:** [Russian guide](doc/analysis/README.ru.md).
 See [performance and architecture](doc/analysis/PERFORMANCE.md) and

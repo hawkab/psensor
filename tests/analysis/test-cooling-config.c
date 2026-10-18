@@ -8,6 +8,11 @@ void _log(const char *function, const char *format, ...) {}
 char *path_append(const char *dir, const char *path) {assert(0);return NULL;}
 int main(void) {
     key_file=g_key_file_new();
+    struct tray_color_rule tray;
+    config_get_tray_color("cpu",&tray);assert(!tray.enabled&&tray.warm==90&&tray.hot==95);
+    tray.enabled=true;config_set_tray_color("cpu",&tray);config_get_tray_color("cpu",&tray);assert(tray.enabled);
+    tray.hot=80;config_set_tray_color("cpu",&tray);config_get_tray_color("cpu",&tray);assert(!tray.enabled);
+    tray.hot=95;tray.enabled=true;config_set_tray_color("cpu",&tray);
     struct cooling_rule r,read;
     config_get_cooling_rule("cpu",&r);
     assert(!r.enabled&&r.restore_performance&&r.warm==90&&r.hot==95&&r.hot_seconds==0);
@@ -26,6 +31,7 @@ int main(void) {
     gchar *serialized=g_key_file_to_data(key_file,NULL,NULL);g_key_file_unref(key_file);key_file=g_key_file_new();
     assert(g_key_file_load_from_data(key_file,serialized,-1,0,NULL));
     config_get_cooling_rule("cpu",&read);assert(read.enabled&&read.warm==90&&read.hot==95&&read.balanced_seconds==600);
+    config_get_tray_color("cpu",&tray);assert(tray.enabled&&tray.warm==90&&tray.hot==95); /* independent of power rules */
     g_free(serialized);g_key_file_unref(key_file);key_file=NULL;
     puts("PASS: real config roundtrip, immediate >95 default, one controlling sensor, mutually exclusive command, malformed thresholds, duration validation");
 }

@@ -43,6 +43,7 @@
 #include <sensor_action.h>
 #include <action_notify.h>
 #include <action_tab.h>
+#include <tray_color.h>
 #include <ui_sensorpref.h>
 #include <psensor.h>
 #include <pudisks2.h>
@@ -183,8 +184,7 @@ static void indicators_update(struct ui_psensor *ui)
 	if (is_appindicator_supported())
 		ui_appindicator_update(ui, attention);
 
-	if (is_status_supported())
-		ui_status_update(ui, attention);
+	tray_color_sample(ui, attention);
 }
 
 static gboolean actions_refresh(gpointer data)
@@ -441,6 +441,7 @@ static void cleanup(struct ui_psensor *ui)
 	amd_cleanup();
 	rsensor_cleanup();
 
+	tray_color_cleanup();
 	psensor_list_free(ui->sensors);
 	ui->sensors = NULL;
 
@@ -627,6 +628,7 @@ int main(int argc, char **argv)
 	sensor_actions_init(&ui, actions_refresh);
 
 	ui_appindicator_init(&ui);
+	tray_color_reload(&ui);
 	ui_unity_init();
 
 	gdk_notify_startup_complete();

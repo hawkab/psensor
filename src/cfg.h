@@ -83,6 +83,13 @@ struct cooling_rule {
 void config_get_cooling_rule(const char *, struct cooling_rule *);
 void config_set_cooling_rule(const char *, const struct cooling_rule *);
 
+struct tray_color_rule {
+	bool enabled;
+	double warm, hot;
+};
+void config_get_tray_color(const char *, struct tray_color_rule *);
+void config_set_tray_color(const char *, const struct tray_color_rule *);
+
 /* Loads psensor configuration */
 struct config *config_load(void);
 

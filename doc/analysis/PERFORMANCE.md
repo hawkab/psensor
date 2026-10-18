@@ -7,6 +7,13 @@ Details and Inspector are separate modules imported on demand. One shared reader
 serves visible windows, and the inspector allows one job at a time and closes
 its worker when dismissed.
 
+Tray temperature colors reuse the native sensor samples and cache enabled
+sensors and their thresholds when preferences change. Only critical temperature
+creates a one-second blink timer. It switches between two small installed PNGs
+without touching sensor locks, labels, graphs or the history database. Cooling,
+disabling the rule or stale data removes the timer. Unchanged icon paths are not
+sent to AppIndicator again, and the tray slot is never hidden during blinking.
+
 ## Algorithms
 
 - One bounded, unbuffered `/proc/PID/stat` read per process; integer CPU ticks

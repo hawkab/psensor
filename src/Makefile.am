@@ -5,6 +5,8 @@ psensor_SOURCES = \
 	sensor_action.h sensor_action.c \
 	cooling_policy.h cooling_policy.c \
 	cooling_tab.h cooling_tab.c \
+	tray_color.h tray_color.c \
+	tray_tab.h tray_tab.c \
 	action_tab.h action_tab.c \
 	action_notify.h action_notify.c \
 	notify_cmd.c notify_cmd.h \

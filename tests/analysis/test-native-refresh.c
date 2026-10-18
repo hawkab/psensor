@@ -17,6 +17,7 @@ bool is_appindicator_supported(void) {return true;}
 int is_status_supported(void) {return 0;}
 void ui_appindicator_update(struct ui_psensor *u,bool attention) {indicators++;}
 void ui_status_update(struct ui_psensor *u,unsigned int attention) {assert(0);}
+void tray_color_sample(struct ui_psensor *u,bool attention) {}
 bool config_get_sensor_alarm_enabled(const char *id) {return false;}
 int pmutex_unlock(pthread_mutex_t *m) {return pthread_mutex_unlock(m);}
 int main(void) {

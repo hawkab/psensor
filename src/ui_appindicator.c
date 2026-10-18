@@ -31,6 +31,7 @@
 #include <ui_sensorpref.h>
 #include <ui_status.h>
 #include <ui_pref.h>
+#include <tray_color.h>
 
 static const char *ICON = "psensor_normal";
 static const char *ATTENTION_ICON = "psensor_hot";
@@ -368,27 +369,29 @@ static void update_label(struct ui_psensor *ui)
 
 void ui_appindicator_update(struct ui_psensor *ui, bool attention)
 {
-	AppIndicatorStatus status;
-
 	if (!indicator)
 		return;
 
 	update_label(ui);
 
-	status = app_indicator_get_status(indicator);
-
-	if (!attention && status == APP_INDICATOR_STATUS_ATTENTION)
-		app_indicator_set_status(indicator,
-					 APP_INDICATOR_STATUS_ACTIVE);
-
-	if (attention && status == APP_INDICATOR_STATUS_ACTIVE)
-		app_indicator_set_status(indicator,
-		APP_INDICATOR_STATUS_ATTENTION);
-
 	if (config_get_temperature_unit() == CELSIUS)
 		update_menu_items(1);
 	else
 		update_menu_items(0);
+}
+
+void ui_appindicator_set_tray_icon(const char *path, const char *description, bool attention)
+{
+	if (!indicator)
+		return;
+	/* Changing IconName keeps both the tray slot and numeric label stable. */
+	if (g_strcmp0(app_indicator_get_icon(indicator), path) != 0 ||
+	    g_strcmp0(app_indicator_get_icon_desc(indicator), description) != 0)
+		app_indicator_set_icon_full(indicator, path, description);
+	/* Preserve the existing alert state for ordinary Psensor alarms. */
+	AppIndicatorStatus status = attention ? APP_INDICATOR_STATUS_ATTENTION : APP_INDICATOR_STATUS_ACTIVE;
+	if (app_indicator_get_status(indicator) != status)
+		app_indicator_set_status(indicator, status);
 }
 
 static GtkStatusIcon *unity_fallback(AppIndicator *indicator)
@@ -402,6 +405,7 @@ static GtkStatusIcon *unity_fallback(AppIndicator *indicator)
 	ico = ui_status_get_icon(ui_psensor);
 
 	ui_status_set_visible(1);
+	tray_color_render();
 
 	return ico;
 }
