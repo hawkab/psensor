@@ -3,9 +3,13 @@
 Psensor is a graphical hardware monitoring application for Linux.
 
 This branch adds a compact **heat and load explanation** opened from the tray,
-recent process history, optional detailed graphs, a read-only process inspector,
+recent process history, optional detailed graphs, a process inspector,
 per-sensor sustained-threshold commands, and native desktop notifications that
 open the relevant sensor through a `psensor://` link. The new interface is in Russian.
+
+Process links and table rows have a **Terminate process** context action with
+explicit confirmation. It sends SIGTERM to one verified PID/start-time identity;
+other users' processes use a standard polkit authorization prompt.
 
 It also fixes tray icons, keeps GTK responsive when sensor providers are busy,
 and reduces background/UI work. The history collector runs every two seconds;

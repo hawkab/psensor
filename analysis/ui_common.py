@@ -9,6 +9,11 @@ def Inspector(parent, pid, start, snapshot):
     from process_inspector import Inspector as ProcessInspector
     return ProcessInspector(parent, pid, start, snapshot)
 
+
+def process_link_menu(widget, menu, parent, snapshot):
+    from process_control import populate_link_menu
+    populate_link_menu(widget, menu, parent, snapshot)
+
 def label(text='', css=None, wrap=False):
     item = Gtk.Label(label=text, xalign=0)
     item.set_line_wrap(wrap)

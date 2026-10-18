@@ -23,6 +23,9 @@ active=copy.deepcopy(base);active['current']['cpu']=15;active['current']['proces
 assert explain(active)['headline']=='Сейчас идёт сборка Gradle'
 unknown=copy.deepcopy(base);unknown['current']['cpu']=60;unknown['current']['processes']=[row('service',2)]
 assert 'уточняется' in explain(unknown)['headline']
+postgres=copy.deepcopy(base);postgres['current']['cpu']=40
+postgres['current']['processes']=[row('postgres',600,pid=10),row('postgres',520,pid=11)]
+assert '35% всего ЦП' in explain(postgres)['subtitle'] and '40%' in explain(postgres)['subtitle']
 idle=copy.deepcopy(base);idle['peak']={};idle['recent']=[]
 assert 'Производительность' in explain(idle)['headline']
 print('PASS: dominant activity before thermal peak, ended/active Gradle, three emulators, temp/CCD ranges, unattributed spike, performance mode')

@@ -11,7 +11,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk, Gio, GLib
 from analysis_model import explain, category
-from ui_common import label, process_link, Inspector
+from ui_common import label, process_link, process_link_menu, Inspector
 from history_store import SnapshotReader
 
 STATE = Path(os.environ.get('XDG_STATE_HOME', str(Path.home() / '.local/state'))) / 'psensor-analysis'
@@ -27,6 +27,7 @@ class OverviewWindow(Gtk.ApplicationWindow):
         self.set_resizable(False)
         self.set_default_size(580, 480)
         self.profile_pending = False
+        self.profile_override = None
         self.feedback = ('', 0)
         self.set_icon_name('utilities-system-monitor')
         self.set_titlebar(Gtk.HeaderBar(title='Нагрев процессора', show_close_button=True))
@@ -67,6 +68,7 @@ class OverviewWindow(Gtk.ApplicationWindow):
             text = label('', 'body', True)
             text.set_max_width_chars(57)
             text.connect('activate-link', self.inspect_link)
+            text.connect('populate-popup', self.process_context)
             column.pack_start(text, False, False, 0)
             row.pack_start(column, True, True, 0)
             self.facts.append(text)
@@ -78,8 +80,12 @@ class OverviewWindow(Gtk.ApplicationWindow):
         details = Gtk.Button(label='Подробнее')
         details.connect('clicked', self.open_details)
         buttons.pack_start(details, True, True, 0)
-        self.balance = Gtk.Button(label='Сбалансированный режим')
-        self.balance.set_tooltip_text('Переключить режим питания в balanced: нагрев может снизиться, выполнение задач — замедлиться.')
+        self.energy = Gtk.Button(label='Энергосбережение')
+        self.energy.set_tooltip_text('Снизить потребление и нагрев через power-saver. Задачи могут выполняться медленнее.')
+        self.energy.connect('clicked', lambda *_: self.set_profile('power-saver'))
+        buttons.pack_start(self.energy, True, True, 0)
+        self.balance = Gtk.Button(label='Сбалансированный')
+        self.balance.set_tooltip_text('Компромисс скорости и экономии. Под нагрузкой турбобуст и высокая температура могут сохраняться.')
         self.balance.connect('clicked', self.set_balanced)
         buttons.pack_start(self.balance, True, True, 0)
         outer.pack_start(buttons, False, False, 0)
@@ -99,6 +105,10 @@ class OverviewWindow(Gtk.ApplicationWindow):
         except (ValueError, AttributeError): pass
         return True
 
+    def process_context(self, widget, menu):
+        if hasattr(self, 'snapshot'):
+            process_link_menu(widget, menu, self, self.snapshot)
+
     def open_details(self, button):
         app = self.get_application()
         if app.details is None:
@@ -108,31 +118,81 @@ class OverviewWindow(Gtk.ApplicationWindow):
         app.details.present()
 
     def set_balanced(self, button):
+        self.set_profile('balanced')
+
+    def set_profile(self, profile):
+        if self.profile_pending: return
         self.profile_pending = True
         self.balance.set_sensitive(False)
+        self.energy.set_sensitive(False)
         try:
-            process = Gio.Subprocess.new(['powerprofilesctl', 'set', 'balanced'], Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE)
-            process.communicate_utf8_async(None, None, self.profile_finished)
+            process = Gio.Subprocess.new(['powerprofilesctl', 'set', profile], Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE)
+            process.communicate_utf8_async(None, None, lambda process, result: self.profile_finished(process, result, profile))
         except GLib.Error as e:
             self.journal.set_text('Не удалось переключить режим: ' + e.message)
             self.balance.set_sensitive(True)
+            self.energy.set_sensitive(True)
             self.profile_pending = False
 
-    def profile_finished(self, process, result):
+    def profile_finished(self, process, result, profile):
         try:
             ok, out, error = process.communicate_utf8_finish(result)
-            message = 'Включён сбалансированный режим. Нагрев может снизиться; задачи могут выполняться дольше.' if process.get_successful() else 'Не удалось переключить режим: ' + error.strip()[:180]
+            if process.get_successful():
+                self.read_profile(lambda actual, error: self.profile_confirmed(profile, actual, error))
+                return
+            else:
+                message = 'Не удалось переключить режим: ' + error.strip()[:180]
         except GLib.Error as e: message = 'Не удалось переключить режим: ' + e.message
+        self.profile_feedback(message)
+
+    def read_profile(self, callback):
+        def received(connection, result):
+            try:
+                reply = connection.call_finish(result)
+                callback(str(reply.unpack()[0]), None)
+            except GLib.Error as error:
+                callback(None, error.message)
+        def connected(object, result):
+            try:
+                connection = Gio.bus_get_finish(result)
+                connection.call('org.freedesktop.UPower.PowerProfiles', '/org/freedesktop/UPower/PowerProfiles',
+                                'org.freedesktop.DBus.Properties', 'Get',
+                                GLib.Variant('(ss)', ('org.freedesktop.UPower.PowerProfiles', 'ActiveProfile')),
+                                GLib.VariantType.new('(v)'), Gio.DBusCallFlags.NONE, 2000, None, received)
+            except GLib.Error as error:
+                callback(None, error.message)
+        Gio.bus_get(Gio.BusType.SYSTEM, None, connected)
+
+    def profile_confirmed(self, requested, actual, error):
+        if actual:
+            self.profile_override = (actual, time.monotonic() + 12)
+        if error:
+            message = 'Команда выполнена, но не удалось проверить текущий режим: ' + error
+        elif actual != requested:
+            message = 'Запрошенный режим не активен. Система сообщает: ' + actual
+        else:
+            message = ('Включено энергосбережение. Нагрев должен снизиться; задачи могут выполняться медленнее.' if actual == 'power-saver' else
+                       'Включён сбалансированный режим. Под нагрузкой турбобуст и высокая температура могут сохраняться.')
+        self.profile_feedback(message)
+
+    def profile_feedback(self, message):
         if self.timer:
             self.feedback = (message, time.monotonic() + 10)
             self.journal.set_text(message)
             self.balance.set_sensitive(True)
+            self.energy.set_sensitive(True)
         self.profile_pending = False
+        if self.timer: self.refresh()
 
     def refresh(self):
         try:
             s = self.get_application().snapshot()
             if s is None: raise ValueError('Нет измерений')
+            if self.profile_override:
+                profile, until = self.profile_override
+                if time.monotonic() < until:
+                    s = dict(s, current=dict(s['current'], hardware=dict(s['current']['hardware'], power_profile=profile)))
+                else: self.profile_override = None
             self.snapshot = s
             facts = explain(s)
             age = datetime.datetime.now().timestamp() - s['current']['ts']
@@ -153,13 +213,17 @@ class OverviewWindow(Gtk.ApplicationWindow):
             self.cpu.set_text(f'{facts["cpu"]:.0f}%')
             current = facts['current']
             current_text = process_link(current['process'], current['name']) if current else 'Активных задач пока не видно'
+            if current:
+                current_text += f' — {current["value"] / s["logical_cpus"]:.1f}% ЦП'
             emulators = next((g for g in facts['current_groups'] if g['name'] == 'Android-эмуляторы'), None)
             if facts['emulator_count'] and (not current or current['name'] != 'Android-эмуляторы'):
-                if emulators: current_text += ' и ' + process_link(emulators['process'], f'Android-эмуляторы ({facts["emulator_count"]})')
+                if emulators:
+                    current_text += '. ' + process_link(emulators['process'], f'Android-эмуляторы ({facts["emulator_count"]})')
+                    current_text += f' — {emulators["value"] / s["logical_cpus"]:.1f}% ЦП'
                 else: current_text += f'. Android-эмуляторов: {facts["emulator_count"]}'
             elif facts['emulator_count']:
                 current_text += f' · запущено {facts["emulator_count"]}'
-            current_text += '. Большой нагрузки нет.' if facts['cpu'] < 12 else '. ЦП активно работает.'
+            current_text += '. Большой нагрузки нет.' if facts['cpu'] < 12 else '.'
             self.facts[0].set_markup(current_text)
             recent = facts['recent']
             text = GLib.markup_escape_text(facts['recent_text'])
@@ -169,6 +233,7 @@ class OverviewWindow(Gtk.ApplicationWindow):
             profile_name = {'performance': 'Производительность', 'balanced': 'Сбалансированный', 'power-saver': 'Энергосбережение'}.get(facts['profile'], facts['profile'])
             self.facts[2].set_text('«' + profile_name + '».' + (' Позволяет ЦП работать на высоких частотах.' if facts['profile'] == 'performance' else ''))
             self.balance.set_sensitive(facts['profile'] != 'balanced' and not self.profile_pending)
+            self.energy.set_sensitive(facts['profile'] != 'power-saver' and not self.profile_pending)
             audit = facts['journal']
             self.journal.set_text(('В журнале за 2 часа есть сообщения о нагреве — см. подробнее.' if audit.get('events') else 'За 2 часа сообщений о критическом нагреве в журнале нет.') if audit.get('accessible') else 'Вывод — оценка по нагрузке и времени. Графики и точные замеры — в подробностях.')
             if time.monotonic() < self.feedback[1]: self.journal.set_text(self.feedback[0])

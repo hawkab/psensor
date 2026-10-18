@@ -8,6 +8,7 @@ import importlib.util,sys,threading
 from gi.repository import GLib
 spec=importlib.util.spec_from_file_location('load_window',str(ROOT/'analysis/load-window.py'));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 assert 'analysis_details' not in sys.modules and 'process_inspector' not in sys.modules
+assert 'process_control' not in sys.modules
 app=m.App();app.audit_at=__import__("time").monotonic();app.register(None);app.activate();loop=GLib.MainLoop();completed=False
 def check():
     assert 'analysis_details' not in sys.modules and 'process_inspector' not in sys.modules
@@ -15,6 +16,7 @@ def check():
     assert not any(t.name.startswith('ThreadPoolExecutor') for t in threading.enumerate())
     app.window.open_details(None)
     assert 'analysis_details' in sys.modules and 'process_inspector' not in sys.modules
+    assert 'process_control' not in sys.modules
     assert 'series' in app.details.snapshot
     css=app.css
     app.window.destroy();app.activate()

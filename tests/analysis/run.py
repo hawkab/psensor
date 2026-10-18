@@ -21,8 +21,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--no-gui', action='store_true', help='skip GTK and notification integration checks')
     args = parser.parse_args()
-    env = {**os.environ, 'PYTHONPATH':str(ROOT/'analysis'), 'PYTHONDONTWRITEBYTECODE':'1'}
-    for name in ('test-model.py','test-history-store.py','test-buffer-flush.py','test-install-user.py'):
+    env = {**os.environ, 'PYTHONPATH':str(ROOT/'analysis'), 'PYTHONDONTWRITEBYTECODE':'1',
+           'GDK_BACKEND':'x11', 'GTK_USE_PORTAL':'0', 'GIO_USE_VFS':'local', 'NO_AT_BRIDGE':'1'}
+    for name in ('test-model.py','test-history-store.py','test-buffer-flush.py','test-install-user.py','test-process-control.py'):
         run(['/usr/bin/python3', TESTS/name], env=env)
     packages = ['gtk+-3.0','ayatana-appindicator3-0.1']
     flags = shlex.split(subprocess.check_output(['pkg-config','--cflags',*packages],text=True))
@@ -43,7 +44,7 @@ def main():
             run([outputs/name], env=env)
         if not args.no_gui:
             run(['dbus-run-session','--','xvfb-run','-a',outputs/'test-action-tab'], env=env)
-            for name in ('test-lazy-ui.py','test-lifecycle.py','test-notification.py'):
+            for name in ('test-lazy-ui.py','test-lifecycle.py','test-notification.py','test-process-menu.py'):
                 case_env = {**env,'PSENSOR_TEST_NOTIFICATION_BINARY':str(outputs/'test-notification')}
                 run(['dbus-run-session','--','xvfb-run','-a','/usr/bin/python3',TESTS/name], env=case_env)
     print('All analysis regression checks passed.')

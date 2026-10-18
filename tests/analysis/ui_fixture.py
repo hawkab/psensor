@@ -10,6 +10,10 @@ import time
 def setup():
     fixture = tempfile.TemporaryDirectory(prefix='psensor-ui-test-')
     os.environ['XDG_STATE_HOME'] = fixture.name
+    os.environ['GDK_BACKEND'] = 'x11'
+    os.environ['GTK_USE_PORTAL'] = '0'
+    os.environ['GIO_USE_VFS'] = 'local'
+    os.environ['NO_AT_BRIDGE'] = '1'
     source = Path(__file__).resolve().parents[2] / 'analysis/heat-monitor.py'
     spec = importlib.util.spec_from_file_location('fixture_monitor', source)
     monitor = importlib.util.module_from_spec(spec)

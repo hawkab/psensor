@@ -21,6 +21,8 @@ psensor_SOURCES = \
 	ui_status.h ui_status.c \
 	ui_unity.h
 
+psensor_process_terminate_SOURCES = process_terminate.c
+
 # -export-dynamic is need for defining handlers in the glade file.
 AM_LDFLAGS = -Wl,--as-needed -export-dynamic
 
@@ -50,7 +52,7 @@ LIBS = \
 if GTK
 if X11
 if XEXT
-bin_PROGRAMS = psensor
+bin_PROGRAMS = psensor psensor-process-terminate
 if HELP2MAN
 dist_man_MANS = psensor.1
 endif

@@ -11,7 +11,7 @@ static int writes, resets;
 static GtkWidget *window;
 static GtkEntry *entry;
 static GtkToggleButton *checkbox;
-static GtkButton *preset, *save;
+static GtkButton *preset, *energy, *save;
 void config_get_sensor_action(const char *id, struct sensor_action *out) { *out=saved; out->command=g_strdup(saved.command); }
 void config_set_sensor_action(const char *id, const struct sensor_action *rule) {
     g_free(saved.command); saved=*rule; saved.command=g_strdup(rule->command); writes++;
@@ -28,6 +28,7 @@ static void locate(GtkWidget *w, gpointer unused) {
     if(GTK_IS_BUTTON(w)) {
         const char *text=gtk_button_get_label(GTK_BUTTON(w));
         if(g_strcmp0(text,"Команда: сбалансированный режим")==0) preset=GTK_BUTTON(w);
+        if(g_strcmp0(text,"Команда: энергосбережение")==0) energy=GTK_BUTTON(w);
         if(g_strcmp0(text,"Сохранить правило")==0) save=GTK_BUTTON(w);
     }
     if(GTK_IS_CONTAINER(w)) gtk_container_foreach(GTK_CONTAINER(w),locate,NULL);
@@ -42,8 +43,10 @@ int main(int argc, char **argv) {
     gtk_window_set_default_size(GTK_WINDOW(window),570,650);
     GtkWidget *notebook=gtk_notebook_new();gtk_container_add(GTK_CONTAINER(window),notebook);
     action_tab_create(GTK_NOTEBOOK(notebook),selected);action_tab_update(&sensor);gtk_widget_show_all(window);
-    locate(window,NULL);assert(entry&&checkbox&&preset&&save);
+    locate(window,NULL);assert(entry&&checkbox&&preset&&energy&&save);
     assert(!gtk_toggle_button_get_active(checkbox));
+    gtk_button_clicked(energy);assert(g_strcmp0(gtk_entry_get_text(entry),"powerprofilesctl set power-saver")==0);
+    assert(!writes&&!gtk_toggle_button_get_active(checkbox));
     gtk_button_clicked(preset);assert(g_strcmp0(gtk_entry_get_text(entry),"powerprofilesctl set balanced")==0);
     gtk_toggle_button_set_active(checkbox,TRUE);gtk_button_clicked(save);
     assert(saved.enabled&&saved.seconds==30&&saved.threshold==85&&writes==1&&resets==1);

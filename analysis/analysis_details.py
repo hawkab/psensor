@@ -104,8 +104,9 @@ class DetailsWindow(Gtk.ApplicationWindow):
         self.fans = label('', 'muted', True)
         content.pack_start(self.fans, False, False, 0)
         notebook = Gtk.Notebook()
-        self.now_store = Gtk.ListStore(str, float, float, float, int)
-        self.recent_store = Gtk.ListStore(str, float, float, str, int)
+        # Hidden identity column keeps selection/menu targets safe across PID reuse.
+        self.now_store = Gtk.ListStore(str, float, float, float, int, str)
+        self.recent_store = Gtk.ListStore(str, float, float, str, int, str)
         self.now_store.set_sort_column_id(1, Gtk.SortType.DESCENDING)
         self.recent_store.set_sort_column_id(1, Gtk.SortType.DESCENDING)
         self.add_table(notebook, 'Сейчас', self.now_store,
@@ -135,7 +136,7 @@ class DetailsWindow(Gtk.ApplicationWindow):
     def add_table(self, notebook, title, store, columns):
         view = Gtk.TreeView(model=store)
         view.set_headers_visible(True)
-        view.set_tooltip_text('Правый клик по процессу → копирование PID или строки')
+        view.set_tooltip_text('Правый клик → сведения, завершение процесса или копирование')
         for title_text, index, kind in columns:
             cell = Gtk.CellRendererText()
             if index == 0:
@@ -171,12 +172,19 @@ class DetailsWindow(Gtk.ApplicationWindow):
         view.get_selection().select_path(hit[0])
         model, iterator = view.get_selection().get_selected()
         row = list(model[iterator])
+        pid, start = map(int, row[5].split(':'))
+        from process_control import resolve_process, append_terminate
+        process = resolve_process(self.snapshot, pid, start)
+        if not process: return False
+        snapshot = self.snapshot
         menu = Gtk.Menu()
         inspect = Gtk.MenuItem(label='О процессе…')
-        inspect.connect('activate', lambda *_: self.inspect_row(view, hit[0], None))
+        inspect.connect('activate', lambda *_: Inspector(self, pid, start, snapshot))
         menu.append(inspect)
+        append_terminate(menu, self, process, snapshot)
+        menu.append(Gtk.SeparatorMenuItem())
         clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
-        for title, text in [('Копировать PID', str(row[-1])), ('Копировать строку', ' | '.join(map(str, row)))]:
+        for title, text in [('Копировать PID', str(pid)), ('Копировать строку', ' | '.join(map(str, row[:5])))]:
             item = Gtk.MenuItem(label=title)
             item.connect('activate', lambda item, value=text: clipboard.set_text(value, -1))
             menu.append(item)
@@ -184,9 +192,9 @@ class DetailsWindow(Gtk.ApplicationWindow):
         return True
 
     def inspect_row(self, view, path, column):
-        pid = view.get_model()[path][-1]
-        candidates = self.snapshot['current']['processes'] + self.snapshot['recent']
-        process = next((p for p in candidates if p['pid'] == pid), None)
+        pid, start = map(int, view.get_model()[path][5].split(':'))
+        from process_control import resolve_process
+        process = resolve_process(self.snapshot, pid, start)
         if process: Inspector(self, pid, process['start'], self.snapshot)
 
     def refresh(self):
@@ -209,8 +217,8 @@ class DetailsWindow(Gtk.ApplicationWindow):
                 graph.queue_draw()
             fans = sorted((f for f in now['hardware']['fans'] if not f['gpu']), key=lambda f: f['label'])
             self.fans.set_text('Вентиляторы платы: ' + ' · '.join(f'{f["label"]}: {f["rpm"]} RPM' for f in fans if f['rpm'] > 0) if fans else 'Датчики оборотов кулера ЦП недоступны')
-            update_rows(self.now_store, [[p['name'], p['cpu'], p['machine_cpu'], p['rss_mb'], p['pid']] for p in now['processes'][:15]])
-            update_rows(self.recent_store, [[p['name'], p['cpu_seconds'], p['peak'], 'Работает' if p['alive'] else 'Завершён', p['pid']] for p in s['recent'][:15]])
+            update_rows(self.now_store, [[p['name'], p['cpu'], p['machine_cpu'], p['rss_mb'], p['pid'], f'{p["pid"]}:{p["start"]}'] for p in now['processes'][:15]])
+            update_rows(self.recent_store, [[p['name'], p['cpu_seconds'], p['peak'], 'Работает' if p['alive'] else 'Завершён', p['pid'], f'{p["pid"]}:{p["start"]}'] for p in s['recent'][:15]])
             lines = s['analysis'][:2]
             if s['recent']:
                 p = s['recent'][0]

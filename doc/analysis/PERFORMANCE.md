@@ -65,3 +65,9 @@ standard notifications and clickable URI; lazy module imports, single inspector
 job and worker cleanup; application shutdown; installation generation; 100,000
 tray label updates without growing heap; and hidden/unchanged native UI behavior.
 GUI tests use synthetic history and isolated D-Bus/Xvfb sessions.
+
+Process termination adds no background timer/thread. The control module loads
+only when a process menu/action is requested. Tests signal disposable children
+only, verify Python/native pidfd identity checks, confirmation/cancellation,
+PID reuse in tables, and simulated authorization cancellation. The polkit helper
+has no persistent process and is invoked only after an explicit user action.

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-"""Read-only process inspection; work runs outside GTK's event loop."""
+"""Process inspection outside GTK's event loop; termination is explicitly requested."""
 import concurrent.futures
 from itertools import islice
 import datetime
@@ -116,6 +116,9 @@ class Inspector(Gtk.Dialog):
         super().__init__(title='Инспектор процесса', transient_for=parent, modal=True, use_header_bar=True, destroy_with_parent=True)
         self.add_button('Закрыть', Gtk.ResponseType.CLOSE)
         self.add_button('Обновить', Gtk.ResponseType.APPLY)
+        self.stop_button = self.add_button('Завершить…', 1001)
+        self.stop_button.get_style_context().add_class('destructive-action')
+        self.stop_button.set_sensitive(False)
         self.set_default_size(620, 560)
         self.closed = False
         self.pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
@@ -148,6 +151,13 @@ class Inspector(Gtk.Dialog):
         self.pool.submit(inspect_process, self.pid, self.start, self.snapshot).add_done_callback(self.loaded)
 
     def response(self, dialog, response):
+        if response == 1001:
+            from process_control import resolve_process, request_termination
+            process = resolve_process(self.snapshot, self.pid, self.start)
+            if process:
+                request_termination(self, process, self.snapshot,
+                                    finished=lambda: GLib.timeout_add(300, self.refresh_after_termination))
+            return
         if response != Gtk.ResponseType.APPLY:
             self.destroy()
             return
@@ -156,6 +166,10 @@ class Inspector(Gtk.Dialog):
             fresh = self.reader.snapshot()
             if fresh: self.snapshot = fresh
         self.load()
+
+    def refresh_after_termination(self):
+        if not self.closed: self.load()
+        return GLib.SOURCE_REMOVE
 
     def loaded(self, future):
         try: data = future.result()
@@ -166,6 +180,7 @@ class Inspector(Gtk.Dialog):
         if self.closed: return GLib.SOURCE_REMOVE
         self.busy = False
         self.set_response_sensitive(Gtk.ResponseType.APPLY, True)
+        self.stop_button.set_sensitive(not data.get('ended', True))
         self.heading.set_text(data['title'])
         for widget in self.box.get_children():
             if widget is not self.heading: self.box.remove(widget)

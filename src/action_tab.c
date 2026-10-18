@@ -75,7 +75,7 @@ static void save_clicked(GtkButton *button, gpointer data)
 
 static void preset_clicked(GtkButton *button, gpointer data)
 {
-	gtk_entry_set_text(command, "powerprofilesctl set balanced");
+	gtk_entry_set_text(command, (const char *)data);
 	gtk_label_set_text(
 	    status,
 	    "Команда подставлена. Проверьте условие и сохраните правило.");
@@ -153,11 +153,13 @@ void action_tab_create(GtkNotebook *notebook,
 	gtk_box_pack_start(GTK_BOX(panel), text("Команда"), FALSE, FALSE, 0);
 	command = GTK_ENTRY(gtk_entry_new());
 	gtk_entry_set_placeholder_text(command,
-				       "powerprofilesctl set balanced");
+				       "powerprofilesctl set power-saver");
 	gtk_box_pack_start(GTK_BOX(panel), GTK_WIDGET(command), FALSE, FALSE,
 			   0);
-	preset = gtk_button_new_with_label("Команда: сбалансированный режим");
-	g_signal_connect(preset, "clicked", G_CALLBACK(preset_clicked), NULL);
+	preset = gtk_button_new_with_label("Команда: энергосбережение");
+	g_signal_connect(preset, "clicked", G_CALLBACK(preset_clicked),
+			 "powerprofilesctl set power-saver");
+	gtk_widget_set_tooltip_text(preset, "Для снижения нагрева; задачи могут выполняться медленнее.");
 	gtk_box_pack_start(GTK_BOX(panel), preset, FALSE, FALSE, 0);
 	gtk_box_pack_start(
 	    GTK_BOX(panel),
@@ -173,6 +175,11 @@ void action_tab_create(GtkNotebook *notebook,
 	advanced = gtk_expander_new("Дополнительно");
 	options = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);
 	gtk_container_set_border_width(GTK_CONTAINER(options), 8);
+	preset = gtk_button_new_with_label("Команда: сбалансированный режим");
+	g_signal_connect(preset, "clicked", G_CALLBACK(preset_clicked),
+			 "powerprofilesctl set balanced");
+	gtk_widget_set_tooltip_text(preset, "Сбалансированный режим допускает турбобуст и высокую температуру под нагрузкой.");
+	gtk_box_pack_start(GTK_BOX(options), preset, FALSE, FALSE, 0);
 	extra = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
 	gtk_box_pack_start(GTK_BOX(extra), text("Запас для повторного запуска"),
 			   TRUE, TRUE, 0);
