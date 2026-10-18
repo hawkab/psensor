@@ -3,6 +3,7 @@
 #include <math.h>
 #include <plog.h>
 #include <sensor_action.h>
+#include <cooling_policy.h>
 #include <sys/wait.h>
 
 struct running_action {
@@ -47,10 +48,11 @@ void sensor_actions_reload(void)
 		else
 			g_free(action.rule.command);
 	}
-	if (refresh_callback && configured->len && !timer_id)
+	bool cooling = cooling_policy_reload(action_ui);
+	if (refresh_callback && (configured->len || cooling) && !timer_id)
 		timer_id =
 		    g_timeout_add_seconds(1, refresh_callback, action_ui);
-	else if (!configured->len && timer_id) {
+	else if (!configured->len && !cooling && timer_id) {
 		g_source_remove(timer_id);
 		timer_id = 0;
 	}
@@ -148,6 +150,7 @@ static void finished(GPid pid, gint status, gpointer data)
 
 void sensor_actions_tick(struct ui_psensor *ui)
 {
+	cooling_policy_tick();
 	gint64 now = g_get_monotonic_time();
 	gint64 gap = (gint64)MAX(4, ui->config->sensor_update_interval * 3) *
 		     G_USEC_PER_SEC;

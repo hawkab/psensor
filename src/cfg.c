@@ -18,6 +18,7 @@
  */
 
 #include <errno.h>
+#include <math.h>
 #include <glib/gstdio.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -729,6 +730,58 @@ void config_set_sensor_action(const char *sid, const struct sensor_action *rule)
 			       MAX(1, rule->seconds));
 	g_key_file_set_string(file, sid, "action_command",
 			      rule->command ? rule->command : "");
+	if (rule->enabled)
+		g_key_file_set_boolean(file, sid, "cooling_enabled", FALSE);
+}
+
+static int cooling_seconds(GKeyFile *file, const char *sid, const char *key,
+			   int fallback, int minimum)
+{
+	return g_key_file_has_key(file, sid, key, NULL)
+	    ? CLAMP(g_key_file_get_integer(file, sid, key, NULL), minimum, 86400)
+	    : fallback;
+}
+
+void config_get_cooling_rule(const char *sid, struct cooling_rule *rule)
+{
+	GKeyFile *file = get_sensor_key_file();
+	*rule = (struct cooling_rule){
+		.enabled = g_key_file_get_boolean(file, sid, "cooling_enabled", NULL),
+		.restore_performance = !g_key_file_has_key(file, sid, "cooling_restore_performance", NULL)
+			|| g_key_file_get_boolean(file, sid, "cooling_restore_performance", NULL),
+		.warm = g_key_file_has_key(file, sid, "cooling_warm", NULL)
+			? g_key_file_get_double(file, sid, "cooling_warm", NULL) : 90,
+		.hot = g_key_file_has_key(file, sid, "cooling_hot", NULL)
+			? g_key_file_get_double(file, sid, "cooling_hot", NULL) : 95,
+		.hot_seconds = cooling_seconds(file, sid, "cooling_hot_seconds", 0, 0),
+		.warm_seconds = cooling_seconds(file, sid, "cooling_warm_seconds", 300, 1),
+		.balanced_seconds = cooling_seconds(file, sid, "cooling_balanced_seconds", 600, 1),
+		.saver_seconds = cooling_seconds(file, sid, "cooling_saver_seconds", 600, 1)
+	};
+	if (!isfinite(rule->warm) || !isfinite(rule->hot) || rule->warm >= rule->hot)
+		rule->enabled = false;
+}
+
+void config_set_cooling_rule(const char *sid, const struct cooling_rule *rule)
+{
+	GKeyFile *file = get_sensor_key_file();
+	if (rule->enabled) {
+		/* One machine-wide profile: only one sensor may control it. */
+		gchar **groups = g_key_file_get_groups(file, NULL);
+		for (gchar **group = groups; *group; group++)
+			if (g_key_file_get_boolean(file, *group, "cooling_enabled", NULL))
+				g_key_file_set_boolean(file, *group, "cooling_enabled", FALSE);
+		g_strfreev(groups);
+		g_key_file_set_boolean(file, sid, "action_enabled", FALSE);
+	}
+	g_key_file_set_boolean(file, sid, "cooling_enabled", rule->enabled);
+	g_key_file_set_boolean(file, sid, "cooling_restore_performance", rule->restore_performance);
+	g_key_file_set_double(file, sid, "cooling_warm", rule->warm);
+	g_key_file_set_double(file, sid, "cooling_hot", rule->hot);
+	g_key_file_set_integer(file, sid, "cooling_hot_seconds", rule->hot_seconds);
+	g_key_file_set_integer(file, sid, "cooling_warm_seconds", rule->warm_seconds);
+	g_key_file_set_integer(file, sid, "cooling_balanced_seconds", rule->balanced_seconds);
+	g_key_file_set_integer(file, sid, "cooling_saver_seconds", rule->saver_seconds);
 }
 
 char *config_get_sensor_name(const char *sid)

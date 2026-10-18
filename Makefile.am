@@ -39,6 +39,8 @@ EXTRA_DIST = $(desktop_DATA) $(autostart_DATA) README.md \
 	tests/analysis/test-action-tab.c tests/analysis/test-notification.c \
 	tests/analysis/test-notification.py tests/analysis/test-tray-allocation.c \
 	tests/analysis/test-native-refresh.c tests/analysis/test-install-user.py \
+	tests/analysis/test-cooling.c tests/analysis/test-cooling-runtime.c \
+	tests/analysis/test-cooling-config.c \
 	tests/analysis/test-process-control.py tests/analysis/test-process-menu.py
 
 if ASCIIDOCTOR

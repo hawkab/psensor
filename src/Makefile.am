@@ -3,6 +3,8 @@ SUBDIRS = lib glade
 psensor_SOURCES = \
 	cfg.h cfg.c \
 	sensor_action.h sensor_action.c \
+	cooling_policy.h cooling_policy.c \
+	cooling_tab.h cooling_tab.c \
 	action_tab.h action_tab.c \
 	action_notify.h action_notify.c \
 	notify_cmd.c notify_cmd.h \

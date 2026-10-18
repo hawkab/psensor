@@ -1,9 +1,10 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 #include <action_tab.h>
+#include <cooling_tab.h>
 #include <sensor_action.h>
 #include <temperature.h>
 
-static GtkWidget *panel;
+static GtkWidget *panel, *command_expander;
 static GtkToggleButton *enabled;
 static GtkComboBox *direction;
 static GtkSpinButton *threshold, *duration, *hysteresis;
@@ -25,6 +26,7 @@ static gboolean refresh_status(gpointer data)
 {
 	struct psensor *s = selected();
 	if (s) {
+		cooling_tab_refresh(s);
 		struct sensor_action rule;
 		config_get_sensor_action(s->id, &rule);
 		gtk_label_set_text(status, rule.enabled
@@ -68,6 +70,7 @@ static void save_clicked(GtkButton *button, gpointer data)
 	config_set_sensor_action(s->id, &rule);
 	config_sync();
 	sensor_action_reset(s->id);
+	action_tab_update(s);
 	gtk_label_set_text(status, rule.enabled
 				       ? "Правило включено и сохранено"
 				       : "Правило выключено и сохранено");
@@ -87,6 +90,10 @@ void action_tab_update(struct psensor *s)
 	bool fahrenheit;
 	if (!panel || !s)
 		return;
+	cooling_tab_update(s);
+	struct cooling_rule cooling;
+	config_get_cooling_rule(s->id, &cooling);
+	gtk_expander_set_expanded(GTK_EXPANDER(command_expander), !cooling.enabled);
 	config_get_sensor_action(s->id, &rule);
 	fahrenheit = (s->type & SENSOR_TYPE_TEMP) &&
 		     config_get_temperature_unit() == FAHRENHEIT;
@@ -110,17 +117,23 @@ void action_tab_update(struct psensor *s)
 void action_tab_create(GtkNotebook *notebook,
 		       struct psensor *(*get_selected)(void))
 {
-	GtkWidget *grid, *condition, *preset, *save, *scroll, *advanced,
+	GtkWidget *commands, *grid, *condition, *preset, *save, *scroll, *advanced,
 	    *options, *extra;
 	selected = get_selected;
 	panel = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);
 	gtk_container_set_border_width(GTK_CONTAINER(panel), 16);
-	gtk_box_pack_start(GTK_BOX(panel),
+	gtk_box_pack_start(GTK_BOX(panel), cooling_tab_create(get_selected), FALSE, FALSE, 0);
+	commands = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);
+	gtk_container_set_border_width(GTK_CONTAINER(commands), 8);
+	command_expander = gtk_expander_new("Произвольная команда");
+	gtk_container_add(GTK_CONTAINER(command_expander), commands);
+	gtk_box_pack_start(GTK_BOX(panel), command_expander, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(commands),
 			   text("Команда при длительном условии"), FALSE, FALSE,
 			   0);
 	enabled = GTK_TOGGLE_BUTTON(
 	    gtk_check_button_new_with_label("Включить для этого датчика"));
-	gtk_box_pack_start(GTK_BOX(panel), GTK_WIDGET(enabled), FALSE, FALSE,
+	gtk_box_pack_start(GTK_BOX(commands), GTK_WIDGET(enabled), FALSE, FALSE,
 			   0);
 	grid = gtk_grid_new();
 	gtk_grid_set_column_spacing(GTK_GRID(grid), 12);
@@ -149,26 +162,26 @@ void action_tab_create(GtkNotebook *notebook,
 	gtk_spin_button_set_digits(hysteresis, 1);
 	gtk_grid_attach(GTK_GRID(grid), text("Непрерывно, секунд"), 0, 1, 1, 1);
 	gtk_grid_attach(GTK_GRID(grid), GTK_WIDGET(duration), 1, 1, 1, 1);
-	gtk_box_pack_start(GTK_BOX(panel), grid, FALSE, FALSE, 0);
-	gtk_box_pack_start(GTK_BOX(panel), text("Команда"), FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(commands), grid, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(commands), text("Команда"), FALSE, FALSE, 0);
 	command = GTK_ENTRY(gtk_entry_new());
 	gtk_entry_set_placeholder_text(command,
 				       "powerprofilesctl set power-saver");
-	gtk_box_pack_start(GTK_BOX(panel), GTK_WIDGET(command), FALSE, FALSE,
+	gtk_box_pack_start(GTK_BOX(commands), GTK_WIDGET(command), FALSE, FALSE,
 			   0);
 	preset = gtk_button_new_with_label("Команда: энергосбережение");
 	g_signal_connect(preset, "clicked", G_CALLBACK(preset_clicked),
 			 "powerprofilesctl set power-saver");
 	gtk_widget_set_tooltip_text(preset, "Для снижения нагрева; задачи могут выполняться медленнее.");
-	gtk_box_pack_start(GTK_BOX(panel), preset, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(commands), preset, FALSE, FALSE, 0);
 	gtk_box_pack_start(
-	    GTK_BOX(panel),
+	    GTK_BOX(commands),
 	    text("Команда запускается один раз и может повториться после "
 		 "возврата к обычным значениям. Правило работает, пока запущен "
 		 "Psensor."),
 	    FALSE, FALSE, 0);
 	gtk_box_pack_start(
-	    GTK_BOX(panel),
+	    GTK_BOX(commands),
 	    text("После завершения придёт системное уведомление. Нажмите его, "
 		 "чтобы открыть это правило."),
 	    FALSE, FALSE, 0);
@@ -194,12 +207,12 @@ void action_tab_create(GtkNotebook *notebook,
 		 "в них всегда в °C."),
 	    FALSE, FALSE, 0);
 	gtk_container_add(GTK_CONTAINER(advanced), options);
-	gtk_box_pack_start(GTK_BOX(panel), advanced, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(commands), advanced, FALSE, FALSE, 0);
 	save = gtk_button_new_with_label("Сохранить правило");
 	g_signal_connect(save, "clicked", G_CALLBACK(save_clicked), NULL);
-	gtk_box_pack_start(GTK_BOX(panel), save, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(commands), save, FALSE, FALSE, 0);
 	status = GTK_LABEL(text("Правило выключено"));
-	gtk_box_pack_start(GTK_BOX(panel), GTK_WIDGET(status), FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(commands), GTK_WIDGET(status), FALSE, FALSE, 0);
 	scroll = gtk_scrolled_window_new(NULL, NULL);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll),
 				       GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
@@ -228,5 +241,12 @@ void action_tab_focus(void)
 	gtk_notebook_set_current_page(
 	    GTK_NOTEBOOK(notebook),
 	    gtk_notebook_page_num(GTK_NOTEBOOK(notebook), page));
-	gtk_widget_grab_focus(GTK_WIDGET(command));
+	struct psensor *s = selected();
+	struct cooling_rule cooling = {0};
+	if (s)
+		config_get_cooling_rule(s->id, &cooling);
+	if (cooling.enabled)
+		cooling_tab_focus();
+	else
+		gtk_widget_grab_focus(GTK_WIDGET(command));
 }

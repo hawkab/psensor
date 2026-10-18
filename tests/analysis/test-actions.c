@@ -5,6 +5,9 @@
 #include <glib/gstdio.h>
 #include <sensor_action.h>
 #include <action_notify.h>
+#include <cooling_policy.h>
+bool cooling_policy_reload(struct ui_psensor *ui) { return false; }
+void cooling_policy_tick(void) {}
 
 static struct sensor_action test_rule;
 static int notifications;

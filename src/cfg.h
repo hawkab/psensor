@@ -75,6 +75,14 @@ struct sensor_action {
 void config_get_sensor_action(const char *, struct sensor_action *);
 void config_set_sensor_action(const char *, const struct sensor_action *);
 
+struct cooling_rule {
+	bool enabled, restore_performance;
+	double warm, hot;
+	int warm_seconds, hot_seconds, balanced_seconds, saver_seconds;
+};
+void config_get_cooling_rule(const char *, struct cooling_rule *);
+void config_set_cooling_rule(const char *, const struct cooling_rule *);
+
 /* Loads psensor configuration */
 struct config *config_load(void);
 

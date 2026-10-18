@@ -34,13 +34,13 @@ def main():
                   '-ffunction-sections','-fdata-sections', '-Wl,--gc-sections',
                   '-I'+str(ROOT), '-I'+str(ROOT/'src'), '-I'+str(ROOT/'src/lib'),
                   *shlex.split(os.environ.get('CPPFLAGS','')), *flags]
-        for name, source in [('test-actions','sensor_action.c'),('test-action-tab','action_tab.c'),
+        for name, source in [('test-cooling','cooling_policy.c'),('test-actions','sensor_action.c'),('test-action-tab','action_tab.c'),
                              ('test-notification','action_notify.c'),('test-tray-allocation',None),
-                             ('test-native-refresh',None)]:
-            extra = [ROOT/'src/lib/temperature.c'] if name == 'test-action-tab' else []
+                             ('test-native-refresh',None),('test-cooling-runtime',None),('test-cooling-config',None)]:
+            extra = [ROOT/'src/lib/temperature.c', ROOT/'src/cooling_tab.c'] if name == 'test-action-tab' else []
             run([*common, TESTS/(name+'.c'), *([ROOT/'src'/source] if source else []), *extra,
                  *libs, '-lm','-pthread','-o',outputs/name], env=env)
-        for name in ('test-actions','test-tray-allocation','test-native-refresh'):
+        for name in ('test-cooling','test-cooling-runtime','test-cooling-config','test-actions','test-tray-allocation','test-native-refresh'):
             run([outputs/name], env=env)
         if not args.no_gui:
             run(['dbus-run-session','--','xvfb-run','-a',outputs/'test-action-tab'], env=env)
